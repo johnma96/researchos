@@ -10,28 +10,22 @@ build/
 # ── Virtual environments ──
 .venv/
 venv/
-env/
 
 # ── Environment variables (NEVER commit API keys) ──
 .env
 .env.local
 .env.production
 
-# ── Data (papers, PDFs — too large for git) ──
-data/papers/
-data/pdfs/
+# ── Data (local persistence — too large for git) ──
+data/chroma/
 data/raw/
 *.pdf
-
-# ── Chroma DB persistence ──
-data/chroma/
 
 # ── IDE ──
 .vscode/settings.json
 .vscode/launch.json
 .idea/
 *.swp
-*.swo
 *~
 
 # ── OS ──
@@ -43,23 +37,19 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 
-# ── MyPy ──
+# ── MyPy / Ruff ──
 .mypy_cache/
-
-# ── Ruff ──
 .ruff_cache/
 
 # ── Logs ──
 *.log
 logs/
 
-# ── Docker (local overrides) ──
+# ── Docker ──
 docker-compose.override.yml
 
-# ── Jupyter (if used for exploration) ──
+# ── Jupyter ──
 .ipynb_checkpoints/
 
 # ── uv ──
-# uv.lock is committed (reproducible builds)
-# but cache is not
 .uv_cache/

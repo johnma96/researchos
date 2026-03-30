@@ -1,4 +1,4 @@
-.PHONY: help install dev test lint format clean run-bot run-api
+.PHONY: help install dev test test-all lint format typecheck clean run-api run-bot docker-up docker-down evaluate
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -9,13 +9,16 @@ install: ## Install production dependencies
 dev: ## Install all dependencies (including dev tools)
 	uv sync --all-extras
 
-test: ## Run tests
+test: ## Run unit tests only (fast, no IO)
+	uv run pytest -v -m unit
+
+test-all: ## Run all tests (unit + integration)
 	uv run pytest -v
 
 lint: ## Run linter (ruff check)
 	uv run ruff check src/ tests/
 
-format: ## Format code (ruff format)
+format: ## Format code (ruff format + fix)
 	uv run ruff format src/ tests/
 	uv run ruff check --fix src/ tests/
 
@@ -29,9 +32,20 @@ clean: ## Remove caches and build artifacts
 	find . -type d -name .mypy_cache -exec rm -rf {} +
 	rm -rf dist/ build/ *.egg-info/
 
-# ── App commands (V1) ──
-run-bot: ## Start the Telegram bot
-	uv run python -m researchos.bot.main
-
+# ── App commands ──
 run-api: ## Start the FastAPI server
-	uv run uvicorn researchos.api.main:app --reload --port 8000
+	uv run uvicorn researchos.infrastructure.api.main:app --reload --port 8000
+
+run-bot: ## Start the Telegram bot
+	uv run python -m researchos.infrastructure.bot.main
+
+# ── Docker ──
+docker-up: ## Start local stack (api + chroma)
+	docker-compose up -d
+
+docker-down: ## Stop local stack
+	docker-compose down
+
+# ── Scripts ──
+evaluate: ## Run agent evaluation
+	uv run python scripts/evaluate_agent.py
