@@ -1,8 +1,7 @@
 # ResearchOS — Diario de aprendizaje (learnings.md)
 
-> Este documento registra lo aprendido cada semana: conceptos nuevos, errores cometidos,
-> decisiones de diseño y reflexiones. Es tanto herramienta de aprendizaje como activo
-> de portfolio para entrevistas.
+> Registra lo aprendido cada semana: conceptos, errores, decisiones, reflexiones.
+> Herramienta de aprendizaje + activo de portfolio para entrevistas.
 
 ---
 
@@ -11,17 +10,16 @@
 **Fecha:** _[completar]_
 
 ### ¿Qué aprendí?
-- _[completar]_
+-
 
 ### ¿Qué no entendí bien?
-- _[completar]_
+-
 
 ### Decisiones de diseño
-- _[completar: por qué elegiste X sobre Y]_
+-
 
 ### Errores interesantes
-- _[completar: qué se rompió y cómo lo resolviste]_
+-
 
 ---
-
-<!-- Copiar esta plantilla para cada semana nueva -->
+<!-- Copiar plantilla para cada semana -->

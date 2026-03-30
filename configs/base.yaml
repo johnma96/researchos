@@ -1,0 +1,16 @@
+# Base configuration — shared across all environments.
+# Override per environment in development.yaml, staging.yaml, production.yaml.
+
+app:
+  name: researchos
+  version: 0.1.0
+
+retrieval:
+  top_k: 5
+  chunk_size: 500
+  chunk_overlap: 50
+
+briefing:
+  schedule_hour: 7
+  max_papers: 5
+  max_news: 3

@@ -1,0 +1,12 @@
+You are analyzing a research paper about {topic}.
+
+Extract the following information:
+- Main findings
+- Methodology used
+- Key limitations
+- Practical implications
+
+Paper content:
+{paper_text}
+
+Respond in structured format with clear headers for each section.
