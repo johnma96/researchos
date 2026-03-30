@@ -32,6 +32,41 @@ Insights:
 
 3. Determinismo vs. Agencia: Si la tarea es clasificar (PQRS), el determinismo del RAG gana. Si la tarea es diagnosticar/decidir (Pensiones), la agencia de ReAct es superior.
 
+### Lo que construí
+Cliente de Claude API (`AnthropicLLM`) que implementa el Protocol `LLMProvider` con dos métodos: `generate()` para respuestas completas y `stream()` para respuestas token a token.
+
+### Conceptos aprendidos
+
+**async/await**
+`async def` declara una función que puede pausarse. `await` es el punto de pausa: el event loop atiende otras tareas mientras espera la respuesta externa. Sin async, el programa se bloquea esperando.
+
+**AsyncMock vs MagicMock**
+- `MagicMock` — simula objetos y atributos síncronos
+- `AsyncMock` — simula funciones async (las que necesitan `await`)
+- Para `async with` hay que mockear `__aenter__` y `__aexit__`
+- Para `async for` se necesita un generador async (`async def` + `yield`), no un `iter()` normal
+
+**Tests unitarios vs integración**
+- Unitario: sin llamadas reales, cliente reemplazado por mock, rápido, sin costo
+- Integración: llamada real a la API, marcado con `@pytest.mark.integration`, consume tokens
+- `make test` corre solo `@pytest.mark.unit`. `make test-all` corre todo.
+
+**pre-commit**
+Guardián que corre antes de cada commit. Si encuentra errores autocorregibles, los corrige y bloquea el commit. Solo hay que volver a hacer el commit con los archivos ya corregidos.
+
+**Claude Pro vs Anthropic API**
+Son productos separados. Claude Pro cubre claude.ai (interfaz web). La API requiere créditos independientes en console.anthropic.com.
+
+### Decisiones técnicas
+- `_format_messages()` separa el system prompt de los mensajes de conversación antes de enviar a la API
+- Re-exports explícitos (`Document as Document`) requeridos por ruff para imports públicos en `__init__.py`
+- Notebooks excluidos del linting de ruff en `pyproject.toml`
+
+### ¿Qué no entendí bien?
+- Cuándo usar async-await: debo reforzar este concepto porque veo que está muy rlacionado con el uso de APIs
+- Protocol: Entiendo que es más como una maqueta que le dice a python que el método debe cumplir X cosas: Eso hace que cuando alguien quiera implementar un nuevo proveedor, mínimamente debe ajustarse al contrato?
+- test: el uso de mocks es complejo, seguir profundizando y tal vez buscar hacer ejercicios?
+
 **Fecha:** _[completar]_
 
 ### ¿Qué aprendí?
