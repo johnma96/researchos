@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     default_model: str = "claude-sonnet-4-20250514"
     fast_model: str = "claude-haiku-4-5-20251001"
+    temperature: float = 0.5
+    max_tokens: int = 1024
 
     # ── Vector store ──
     vector_store: Literal["chroma", "vertex"] = "chroma"
