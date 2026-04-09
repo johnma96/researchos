@@ -84,6 +84,9 @@ Son productos separados. Claude Pro cubre claude.ai (interfaz web). La API requi
 - Se replanteó el desarrollo de múltiples proyectos al tiempo
 - Hay que actualizar algunas cosas en el template clean-agents-template (NO URGENTE)
 
+### Errores interesantes
+- Pensé que no podía trabajar con uv en el server pero descrubrí que sí
+
 **Fecha:** _[completar]_
 
 ### ¿Qué aprendí?
