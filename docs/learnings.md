@@ -7,7 +7,7 @@
 
 ## Semana 1 — Setup + RAG básico
 
-### Día 1 **Fecha:** 30/03/2026
+### **Fecha:** 30/03/2026
 #### REACT
 - Chain of Taought como estrategia para prompting es una caja negra estática ya que el MODELO USA SUS REPRESENTACIONES INTERNAS PARA GENERAR EL PENSAMIENTO Y  NO LO ALIMENTA DEL MUNDO EXTERIOR. ReAct propone "Razonar para actuar" al tiempo que se "Actúa para razonar". Los modelos de tipo "acción" carecen de la capacidad de llevar objetivos de alto nivel o complejos por lo que es difícil un reflexión profunda.
 
@@ -66,6 +66,23 @@ Son productos separados. Claude Pro cubre claude.ai (interfaz web). La API requi
 - Cuándo usar async-await: debo reforzar este concepto porque veo que está muy rlacionado con el uso de APIs
 - Protocol: Entiendo que es más como una maqueta que le dice a python que el método debe cumplir X cosas: Eso hace que cuando alguien quiera implementar un nuevo proveedor, mínimamente debe ajustarse al contrato?
 - test: el uso de mocks es complejo, seguir profundizando y tal vez buscar hacer ejercicios?
+
+**Fecha:** 09/04/2026
+
+### ¿Qué aprendí?
+-  En la creación de los repos hermanos debo customizar el CLAUDE.md para que sepa hacia dónde apunta el proyecto y sus pormenores
+- También aprendía acerca de .pre-commit y solucioné algunos inconvenientes con su uso, entendí que usa ruff y linter para mantener el código limpio y ordenado
+- Establecí una rutina para hacer commits que se basa en hacer cerca de 4 a 6 commits diarios de manera que el avance sea continuo pero contenido, y además se estableció Conventional Commits con una estructura <type>(<scoper>): <description> y se incluyó en los CLAUDE.md para que el asistente de código ayude a hacer commits y avice cuando note que ya es hora.
+- Aprendía sobre uv y su uso para la gestión de dependecias: actualmente es un estandar en python porque permite mantener ambienestes aislados, disminuye el consumo de recursos ya que trabaja como apuntador a librerías que ya se han descargado en lugar de descargar cada una en el ambiente particular; y como bonues es mucho más rápido que la estrategia pip + venv.
+
+### Que no entendí bien
+- Aún tengo dudas sobre el uso de arquitectura limpia y sus beneficios
+- También debo de ahondar en cuál es la importnacia de establecer modelos y protocolos que además están aislados de la infraestructura
+
+### Decisiones de diseño
+- Se modificó el CLAUDE.md
+- Se replanteó el desarrollo de múltiples proyectos al tiempo
+- Hay que actualizar algunas cosas en el template clean-agents-template (NO URGENTE)
 
 **Fecha:** _[completar]_
 

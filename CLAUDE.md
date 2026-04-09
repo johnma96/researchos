@@ -97,3 +97,96 @@ make format        # ruff format
 make run-api       # FastAPI server
 make run-bot       # Telegram bot
 ```
+
+---
+
+## Adding a dependency
+
+```bash
+uv add <package>          # Producción
+uv add --dev <package>    # Solo desarrollo
+```
+
+Siempre agregar el campo correspondiente en `config.py` y `.env.example`
+cuando el SDK requiera credenciales.
+
+---
+
+## Work log y Resumen de Jornada
+
+El registro histórico del proyecto vive en `docs/work_log.md` en la raíz del repositorio.
+
+**Protocolo de cierre de jornada:**
+Cuando el usuario solicite un resumen de la jornada de trabajo (o use comandos similares como "Genera el resumen del día...", "Resume el trabajo que hicimos ..."), DEBES ejecutar este flujo exacto para actualizar el archivo `work_log.md`:
+
+1. **Analizar el Contexto Manual:** Extrae y resume cualquier información explícita que el usuario te haya dado en ese mismo prompt (ej. reuniones externas, investigación paralela, conversaciones con otros modelos).
+2. **Analizar la Sesión de Claude Code:** Revisa tu propia memoria de la sesión actual: ¿Qué archivos de la Clean Architecture exploramos? ¿Qué problemas de código o dependencias resolvimos juntos? ¿Qué nuevas implementaciones se desarrollaron? ¿Qué tareas quedaron pendientes?
+3. **Analizar el Repositorio (Git):** Usa tus herramientas de terminal para revisar los commits de las últimas 24 horas (`git log --since="1 day ago"`) y los cambios actuales sin commitear (`git status` o `git diff`).
+4. **Redactar y Guardar:** Crea una nueva entrada al final de `work_log.md` con la fecha de hoy. El formato DEBE ser:
+
+   ### [Fecha en formato YYYY-MM-DD]
+   - **Contexto del Desarrollador:** [Resumen del input manual del usuario]
+   - **Trabajo con Claude Code:** [Resumen de los archivos tocados, bugs arreglados o lógica discutida en la sesión]
+   - **Historial de Git:** [Resumen de los commits realizados y estado actual del repo]
+   - **Tareas Pendientes:** [Resumen de las tareas pendientes para trabajar la próxima sesión]
+
+---
+
+## Git workflow
+
+### Commit cadence
+- Claude Code debe sugerir hacer commit al finalizar cada tarea lógica completa,
+  no cada archivo modificado.
+- Una "tarea lógica" es: un feature implementado, un test que pasa, un bug
+  corregido, un refactor terminado, una sección de docs completa.
+- Al terminar una tarea, Claude debe decir: "Esta tarea está completa.
+  Sugiero commit: `<mensaje propuesto>`. ¿Procedo?"
+- Claude NUNCA hace commit automático sin confirmación del usuario.
+
+### Commit message format
+Utiliza Conventional Commits. Los mensajes deben estar escritos en inglés.
+
+   **Format:** `<type>(<scope>): <description>`
+
+   **Types:**
+   - `feat` — new feature or capability
+   - `fix` — bug fix
+   - `refactor` — code change that neither fixes a bug nor adds a feature
+   - `test` — adding or updating tests
+   - `docs` — documentation only
+   - `chore` — tooling, dependencies, CI, config
+   - `style` — formatting, whitespace (no logic change)
+   - `perf` — performance improvement
+
+   **Scopes** match the project's architectural layers and components.
+   Use lowercase, one word. Common scopes for agent projects:
+   `domain`, `application`, `infrastructure`, `llm`, `retrieval`, `memory`,
+   `api`, `agent`, `prompts`, `config`, `deps`, `ci`, `tests`, `docs`.
+
+   **Examples:**
+   feat(llm): add streaming support to provider
+   fix(retrieval): handle empty search results
+   refactor(agent): switch from inheritance to composition
+   test(domain): add unit tests for Protocol implementations
+   docs(architecture): add ADR for prompt loading decision
+   chore(deps): upgrade pydantic to v2.9
+
+### Commit body (optional)
+Utiliza el cuerpo del texto para explicar **por qué**, no **qué**. El «diff» muestra el «qué».
+Deja una línea en blanco entre el título y el cuerpo del texto. Ejemplo en triple backticks:
+
+   ```
+   refactor(agent): switch from inheritance to composition
+
+   Base class was creating coupling between ResearchAgent and PQRSAgent
+   because streaming behavior differed. Composition via agent_utils.py
+   keeps each agent self-contained.
+   ```
+
+#### Cadencia de commits
+Commit por tarea lógica, no por archivo. Si implementas AnthropicLLM y sus tests, es UN commit con ambos archivos, no dos. Si implementas el cliente arXiv y además arreglas un typo en el README, son DOS commits separados (feat + docs). La regla es: un commit debe poder revertirse sin romper otras cosas y debe tener un propósito claro.
+Para tu flujo típico de desarrollo, apunta a 3-6 commits por jornada de trabajo. Menos de eso y los commits son demasiado grandes (difíciles de revisar); más y son micro-commits que ensucian el historial.
+
+#### Dos reglas adicionales importantes:
+1. Primera: el mensaje de commit se escribe en inglés aunque el código del proyecto tenga comentarios en español. Es convención estándar en la industria y te ayuda a mantener profesionalismo en el repo.
+2. Segunda: el cuerpo del mensaje (opcional, después del título) se usa para explicar el por qué, no el qué. El diff ya muestra el qué. Si la decisión no es obvia, explícala en el cuerpo
