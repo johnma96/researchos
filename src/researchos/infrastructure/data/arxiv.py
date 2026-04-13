@@ -1,7 +1,8 @@
 import xml.etree.ElementTree as ET
 
 import httpx
-from src.researchos.domain.models import Paper
+
+from researchos.domain.models import Paper
 
 BASE_URL = "https://export.arxiv.org/api/query"
 NS = {

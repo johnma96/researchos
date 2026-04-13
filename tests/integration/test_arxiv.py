@@ -1,6 +1,7 @@
 import pytest
-from src.researchos.domain.models import Paper
-from src.researchos.infrastructure.data.arxiv import search_papers
+
+from researchos.domain.models import Paper
+from researchos.infrastructure.data.arxiv import search_papers
 
 
 @pytest.mark.integration

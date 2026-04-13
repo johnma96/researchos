@@ -5,6 +5,7 @@ Usage:
     client = Anthropic(api_key=settings.anthropic_api_key)
 """
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -58,6 +59,10 @@ class Settings(BaseSettings):
 
     # ── GCP (V4) ──
     google_cloud_project: str = ""
+
+    @property
+    def project_root(self) -> Path:
+        return Path(__file__).resolve().parent.parent.parent
 
 
 settings = Settings()

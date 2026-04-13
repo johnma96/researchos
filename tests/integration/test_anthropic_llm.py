@@ -1,6 +1,7 @@
 import pytest
-from src.researchos.domain import Message
-from src.researchos.infrastructure.llm.anthropic_llm import AnthropicLLM
+
+from researchos.domain import Message
+from researchos.infrastructure.llm.anthropic_llm import AnthropicLLM
 
 
 @pytest.mark.integration

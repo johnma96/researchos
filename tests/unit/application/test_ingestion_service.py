@@ -3,8 +3,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from src.researchos.application.services.ingestion_service import extract_text_pdf
-from src.researchos.domain.models import Paper
+
+from researchos.application.services.ingestion_service import extract_text_pdf
+from researchos.domain.models import Paper
 
 PAPERS_SAMPLE_DIR = Path(__file__).parent.parent.parent.parent / "data" / "samples"
 

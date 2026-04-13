@@ -1,11 +1,10 @@
 import re
-from pathlib import Path
 
 import httpx
 import pymupdf
-from src.researchos.domain.models import Paper
 
-PAPERS_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "papers"
+from researchos.domain.models import Paper
+from researchos.paths import PAPERS_DIR
 
 
 def extract_text_pdf(paper: Paper) -> str:
