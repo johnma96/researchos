@@ -1,18 +1,17 @@
 from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from researchos.application.services.ingestion_service import extract_text_pdf
 from researchos.domain.models import Paper
-
-PAPERS_SAMPLE_DIR = Path(__file__).parent.parent.parent.parent / "data" / "samples"
+from researchos.paths import SAMPLES_DIR
 
 
 @pytest.mark.unit
-def test_extract_text_pdf():
-    local_pdf = PAPERS_SAMPLE_DIR / "sample_pdf.pdf"
+@pytest.mark.asyncio
+async def test_extract_text_pdf():
+    local_pdf = SAMPLES_DIR / "sample_pdf.pdf"
 
     paper = Paper(
         source_id="1",
@@ -27,11 +26,18 @@ def test_extract_text_pdf():
 
     mock_response = MagicMock()
     mock_response.content = local_pdf.read_bytes()
+    mock_response.raise_for_status = MagicMock()
+
+    mock_client = MagicMock()
+    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with patch(
-        "researchos.application.services.ingestion_service.httpx.get", return_value=mock_response
+        "researchos.application.services.ingestion_service.httpx.AsyncClient",
+        return_value=mock_client,
     ):
-        result = extract_text_pdf(paper=paper)
+        result = await extract_text_pdf(paper=paper)
 
     assert isinstance(result, str)
     assert len(result) > 0
