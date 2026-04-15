@@ -23,3 +23,27 @@
 - **Work with Claude Code:** Implementado `infrastructure/data/arxiv.py` con `search_papers()` usando `httpx` + parseo XML con namespaces vía `xml.etree.ElementTree`, y `_parse_entries()` privada para separar responsabilidades. Creado `application/services/ingestion_service.py` con `extract_text_pdf()` (descarga con `httpx`, extrae texto con PyMuPDF, limpieza de nombres con `re.sub`, validación con `ValueError`). Creado `src/researchos/paths.py` como módulo transversal usando `pyprojroot` (`PROJECT_ROOT`, `DATA_DIR`, `PAPERS_DIR`, `SAMPLES_DIR`, `CHROMA_DIR`) e importado desde `ingestion_service.py`. `CLAUDE.md` traducido completamente al inglés. 16/16 tests unitarios pasando.
 - **Git History:** 4 commits hoy — `feat(data)`: add arXiv API client with XML parsing and integration test · `feat(notebooks)`: add ignore notebooks in pre-commit tool · `feat(ingestion)`: add PDF download and text extraction service · `refactor(ingestion)`: centralize filesystem paths in paths.py. Rama adelantada 3 commits respecto a origin. Árbol limpio.
 - **Pending Tasks:** Refactorizar `ingestion_service.py` según feedback del tutor: hacer `extract_text_pdf` async con `httpx.AsyncClient`, cambiar `ValueError` por `IngestionError`, partir en `download_pdf()` + `extract_text()` + orquestadora, cambiar `import pymupdf` por `import fitz`. Tarea 4: chunking fijo en `application/services/retrieval_service.py` (función que recibe texto y devuelve `list[Chunk]`, 500 chars con 50 de overlap, test unitario).
+
+---
+
+## 2026-04-15
+
+### Trabajo desarrollado
+- Refactorización de `ingestion_service.py` según feedback del tutor:
+  - `extract_text_pdf` convertida a `async def` con `httpx.AsyncClient`
+  - Partida en `_download_pdf()` + `_extract_text()` + orquestadora
+  - `ValueError` reemplazado por `IngestionError`
+  - `import pymupdf` reemplazado por `import fitz`
+  - Test unitario actualizado con `AsyncMock` y mock de context manager
+- Estudio de AsyncIO: event loop, coroutines, gather, as_completed, create_task
+- 16/16 tests unitarios pasando
+
+### Próximos pasos
+- Tarea 4: chunking fijo en `application/services/retrieval_service.py`
+  - Función que recibe texto crudo y devuelve `list[Chunk]`
+  - 500 caracteres con 50 de overlap
+  - Test unitario con texto de prueba
+- Completar benchmark `scripts/benchmark_arxiv.py` (ejercicio async del plan de estudio)
+- Continuar plan de estudio: jueves 16 abril — primera mitad del artículo async de Real Python
+
+---

@@ -87,6 +87,60 @@ Son productos separados. Claude Pro cubre claude.ai (interfaz web). La API requi
 ### Errores interesantes
 - Pensé que no podía trabajar con uv en el server pero descrubrí que sí
 
+**Fecha:** 15/04/2026
+
+### ¿Qué aprendí?
+- AsyncIO: La analogía es "imagina una persona jugando ajedrez contra otras 15 personas, cada partida toma cerca de 30 minutos y la persona principal mueve en 5 segundos. Si los procesos fueran síncronos, es decir, la persona jugara la partida 1 completa, luego la 2 completa, luego la 3, etc. se demoría en terminar cerca de 7.5 horas. Sin embargo, si la persona juega de manera asíncrona, es decir, mueve en cada partida y va atentiendo cada mesa según su contrincante vaya realizando su movimiento, entonces la misma persona podría terminar en más rápido (supón 5 seg por mesa son 15*5=75 seg y luego ese tiempo en promedio sería 75*30=2250 seg = 37.5 minutos)
+- Está relacionado con los conceptos de paralelismos, multihilo, multiproceso y concurrencia:
+    - El paralelismo implica que varias tareas se ejecutan al mismo tiempo, cada un en un núcleo diferente. Suelen ser tareas liminatas por CPU, es decir, se realizan cálculos.
+    - El multiproceso es una manera de lograr paralelismo
+    - La concurrencia es más amplio que el paralelismo y sugiere que multiples tareas tienen la habilidad de correr traslapándose. Concurrencia no necesarimanete implica paralelismo.
+    - El miltihilo es una manera de lograr concurrencia en la que múltiples hilos toman turnos para ejecutar tareas.
+Estos enfoques tienen sus propias librerías como multiprocessing, concurrent.futures y threading.
+- Se puede usar async para crear una función asíncrona (función corrutina) o un generados asíncrono (usando yield)
+- También usar async con with para un contexto asíncrono o async con for para iterar sobre un generador asíncrono
+- El event loop es el que se encarga de ejecutar las tareas asíncronas. Normalmente se dispara con un asyncio.run() pero también se puede obtener una instancia con asyncio.get_running_loop() para interactur con el objet, como por ejemplo cuando quieres programar un callback pasando el loop como un argumento
+- El patrón, que consiste en esperar una corrutina y pasar su resultado a la siguiente, crea una cadena de corrutinas
+    - Otros patrones importantes:
+        - Integración de corrutinas y colas
+- Async iterators, loops and comprehensions:
+    - iterador: async for
+    - generador asíncrono: async def ... yield
+    - comprehension: [x async for x in f() if ...]
+- También es importatne los statements async with ya que garantizan que los recursos se liberen correctamente
+- asyncio.create_task() para iniciar corrutinas sin esperar el await
+- asyncio.gather() para ejecutar múltiples corrutinas al mismo tiempo y esperar resultados en el orden que las corrutinas son pasadas
+- asyncio.as_completed() para ejecutar múltiples corrutinas al mismo tiempo y esperar resultados en el orden que las corrutinas son completadas
+- Puedes agrupar los errores que suceden en llamadas asíncronas con un ExceptionGroup y puedes manejarlas desde un bloque try usando except* para cada tipo de excepción generada
+
+Usa async cuando:
+
+- Haces llamadas HTTP — arXiv, Anthropic API, NewsAPI (esperas respuesta de red)
+- Lees/escribes archivos en volumen — descargar múltiples PDFs en paralelo
+- Telegram bot — recibes mensajes mientras procesas otros
+
+No uses async cuando:
+
+- Procesas texto en memoria — chunking, parseo XML, re.sub()
+- Operaciones CPU intensivas — embeddings, modelos ML (ahí es multiprocessing)
+
+Regla simple para ResearchOS:
+
+- ¿Esperas algo externo (API, disco, red)? → async def
+- ¿Solo calculas en memoria? → def normal
+
+### ¿Qué no entendí bien?
+- No entiendo también la importancia del event loop a nivel práctico. Entiendo que es quien orquesta las ejecuciones pero a nivel de programación no veo la necesidad de interactuar con él directamente
+- Tengo que ahondar en el patrón de integración de corrutinas y colas
+- también en el entendimiento de asyncio.create_task()
+
+### Decisiones de diseño
+- Solo patrón de cadena para versión 1, en versión 2 podríamos implementa patrones de integración entre corrutinas y colas. También puedo usar gather, task, as_completed y el manejo de errores
+- En V1 todas las funciones que hacen I/O externo son async def. Las que solo procesan datos en memoria son def síncronas. Esta distinción se aplica consistentemente en todo el proyecto.
+
+### Errores interesantes
+-
+
 **Fecha:** _[completar]_
 
 ### ¿Qué aprendí?
