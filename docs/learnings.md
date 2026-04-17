@@ -104,7 +104,7 @@ Estos enfoques tienen sus propias librerías como multiprocessing, concurrent.fu
     - Otros patrones importantes:
         - Integración de corrutinas y colas
 - Async iterators, loops and comprehensions:
-    - iterador: async for
+    - iterador: async for -> el async for solo funciona con objetos que implementa '__alter__' y '__anext__' como un generador o **Strams de datos que llegan por partes** como stream.text_stream, por ejemplo.
     - generador asíncrono: async def ... yield
     - comprehension: [x async for x in f() if ...]
 - También es importatne los statements async with ya que garantizan que los recursos se liberen correctamente
@@ -130,7 +130,7 @@ Regla simple para ResearchOS:
 - ¿Solo calculas en memoria? → def normal
 
 ### ¿Qué no entendí bien?
-- No entiendo también la importancia del event loop a nivel práctico. Entiendo que es quien orquesta las ejecuciones pero a nivel de programación no veo la necesidad de interactuar con él directamente
+- No entiendo la importancia del event loop a nivel práctico. Entiendo que es quien orquesta las ejecuciones pero a nivel de programación no veo la necesidad de interactuar con él directamente
 - Tengo que ahondar en el patrón de integración de corrutinas y colas
 - también en el entendimiento de asyncio.create_task()
 
@@ -139,7 +139,24 @@ Regla simple para ResearchOS:
 - En V1 todas las funciones que hacen I/O externo son async def. Las que solo procesan datos en memoria son def síncronas. Esta distinción se aplica consistentemente en todo el proyecto.
 
 ### Errores interesantes
+- async for -> Solo usado con iteradores o con un stream objetc
+- usar un for y al interior llamar una función async sigue siendo un sistema secuencial. El patró busca que el for esté dentro de un async.gather() para disparar la cadena de asincronismos y así ir trayendo o procesando la I/O al mismo tiempo. Si el orden de las corrutinas no importa se podría usar async.as_completed()
+
+**Fecha:** 17/04/2026
+
+### ¿Qué aprendí?
+- Overlap en un chuncking es para no perder contexto dentro del mismo documento. Imaginar oración en un chunck sin overlap, queda partida y ningún chunk tiene la idea completa. Con un overlap (de 50 caracteres por ejemplo) la oración qeuda en 2 chunks y el retriever puede encontrarla.
+
+### ¿Qué no entendí bien?
 -
+
+### Decisiones de diseño
+-
+
+### Errores interesantes
+-
+
+
 
 **Fecha:** _[completar]_
 

@@ -61,5 +61,6 @@ async def _download_one_paper(paper: Paper):
 
 
 if __name__ == "__main__":
-    asyncio.run(sequential_benchmark("LLM agents", 10))
-    asyncio.run(parallel_benchmark("LLM Agents", 10))
+    q = "LLM agents"
+    asyncio.run(sequential_benchmark(q, 10))
+    asyncio.run(parallel_benchmark(q, 10))
