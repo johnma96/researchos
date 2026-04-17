@@ -47,3 +47,29 @@
 - Continuar plan de estudio: jueves 16 abril — primera mitad del artículo async de Real Python
 
 ---
+
+## 2026-04-17
+
+### Trabajo desarrollado
+- Completado ejercicio de benchmark async: `scripts/benchmark_arxiv.py`
+  - Descarga secuencial vs paralela de 10 papers con `asyncio.gather()`
+  - Resultado: 13.6s secuencial vs 1.2s paralelo (11x más rápido sin caché)
+- Tarea 4 completada: chunking fijo en `application/services/retrieval_service.py`
+  - `overlap_chunking()` con 500 chars y 50 de overlap
+  - Manejo de caso borde: texto más corto que chunk_size retorna 1 chunk
+  - Tests parametrizados con 4 escenarios (texto corto, largo, exactamente chunk_size, chunk_size+1)
+- `chunk_to_document()` implementada y testeada
+- `infrastructure/retrieval/embedder.py` creado con `LocalEmbedder` (sentence-transformers)
+- `infrastructure/retrieval/chroma.py` implementado con `ChromaVectorStore`:
+  - Cliente persistente local con pysqlite3 workaround
+  - `upsert()` con `embed_batch` para eficiencia
+  - `search()` con score normalizado según métrica configurable
+  - Separación de responsabilidades: embedder inyectado como dependencia
+- Test de integración para Chroma: upsert + search verificados
+
+### Próximos pasos
+- Tarea 5: integración end-to-end del pipeline (arXiv → PDF → chunking → Chroma)
+- Plan de estudio semana 2: pytest (artículo Real Python + libro Okken caps 1-5, 7)
+- Resolver sqlite3 en Docker cuando llegue V4
+
+---

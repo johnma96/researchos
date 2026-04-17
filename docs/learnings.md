@@ -145,17 +145,20 @@ Regla simple para ResearchOS:
 **Fecha:** 17/04/2026
 
 ### ¿Qué aprendí?
-- Overlap en un chuncking es para no perder contexto dentro del mismo documento. Imaginar oración en un chunck sin overlap, queda partida y ningún chunk tiene la idea completa. Con un overlap (de 50 caracteres por ejemplo) la oración qeuda en 2 chunks y el retriever puede encontrarla.
-- Cuando requiero que un mismo test haga varias pruebas, puedo utilizar el concepto de test parametrizado, así básicamente establezco con tuplas diferentes variaciones de la entrada del test (ver tests/unit/application/test_retrieval_service.py)
+- Benchmark async confirmado en código real: asyncio.gather() fue 11x más rápido que secuencial descargando 10 papers. La segunda ejecución fue más rápida por caché HTTP y reutilización de conexiones TCP — no significa que async sea menos útil, sino que el caché redujo el tiempo de espera.
+- `async for` solo funciona con objetos que implementan `__aiter__` y `__anext__`. Una lista normal usa `for` común. `asyncio.gather()` es lo que genera el paralelismo, no el tipo de loop.
+- Overlap en chunking es para no perder contexto dentro del mismo documento. Una oración que cae en el borde entre dos chunks queda partida sin overlap. Con 50 chars de overlap, esa oración aparece en ambos chunks y el retriever puede encontrarla completa.
+- Tests parametrizados con `@pytest.mark.parametrize`: permiten probar múltiples escenarios con una sola función de test usando tuplas de parámetros (ver `tests/unit/application/test_retrieval_service.py`).
+- Chroma solo maneja ids, embeddings, textos y metadatas — no sabe nada de `Document`. `ChromaVectorStore` actúa como adaptador que traduce en ambas direcciones.
+- Mutable default arguments en Python son un antipatrón (`B006` en ruff): usar `dict = {}` como default puede causar bugs sutiles. Siempre usar `None` e inicializar dentro de la función.
 
 ### ¿Qué no entendí bien?
--
+- por qué el score se cambia en función de la distancia cuando uso coseno o l2?
 
 ### Decisiones de diseño
--
-
-### Errores interesantes
--
+- `LocalEmbedder` separado de `ChromaVectorStore` — si cambia el modelo de embeddings, no se toca el vector store.
+- `embedder_metadata` configurable en `ChromaVectorStore` para soportar diferentes métricas de distancia (coseno, L2).
+- Hack de pysqlite3 en `conftest.py`, no en código de producción. Se resolverá en Dockerfile en V4.
 
 
 
