@@ -146,6 +146,7 @@ Regla simple para ResearchOS:
 
 ### ¿Qué aprendí?
 - Overlap en un chuncking es para no perder contexto dentro del mismo documento. Imaginar oración en un chunck sin overlap, queda partida y ningún chunk tiene la idea completa. Con un overlap (de 50 caracteres por ejemplo) la oración qeuda en 2 chunks y el retriever puede encontrarla.
+- Cuando requiero que un mismo test haga varias pruebas, puedo utilizar el concepto de test parametrizado, así básicamente establezco con tuplas diferentes variaciones de la entrada del test (ver tests/unit/application/test_retrieval_service.py)
 
 ### ¿Qué no entendí bien?
 -

@@ -1,7 +1,7 @@
 import pytest
 
-from researchos.application.services.retrieval_service import overlap_chunking
-from researchos.domain.models import Chunk
+from researchos.application.services.retrieval_service import chunk_to_document, overlap_chunking
+from researchos.domain.models import Chunk, Document
 
 
 @pytest.mark.parametrize(
@@ -31,3 +31,15 @@ def test_overlap_chunking(text, chunk_size, overlap, expected_single_chunk):
             chunks[i].text[-overlap:] == chunks[i + 1].text[:overlap]
             for i in range(len(chunks) - 1)
         )
+
+
+@pytest.mark.unit
+def test_chunk_to_document():
+    chunk = Chunk(chunk_id="test_0", paper_id="test", text="Hello world!", chunk_index=0)
+
+    doc = chunk_to_document(chunk=chunk)
+
+    assert isinstance(doc, Document)
+    assert doc.doc_id == chunk.chunk_id
+    assert doc.text == chunk.text
+    assert doc.metadata["paper_id"] == chunk.paper_id
