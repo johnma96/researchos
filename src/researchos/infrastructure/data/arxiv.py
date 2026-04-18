@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 
 import httpx
 
+from researchos.domain.exceptions import IngestionError
 from researchos.domain.models import Paper
 
 BASE_URL = "https://export.arxiv.org/api/query"
@@ -16,10 +17,14 @@ async def search_papers(query: str, max_results: int) -> list[Paper]:
 
     async with httpx.AsyncClient() as client:
         response = await client.get(BASE_URL, params=params)
+        response.raise_for_status()
         return _parse_entries(response)
 
 
 def _parse_entries(results: httpx.Response) -> list[Paper]:
+    if not results.text.strip().startswith("<"):
+        raise IngestionError(f"arXiv returned unexpected response: {results.text[:100]}")
+
     root = ET.fromstring(results.text)
 
     papers = []

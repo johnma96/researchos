@@ -6,8 +6,9 @@ import pytest
 
 from researchos.domain.models import Chunk, Document, Message, Paper
 
-__import__("pysqlite3")
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+if sys.platform == "linux":
+    __import__("pysqlite3")
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 # ── Sample data fixtures ──
 

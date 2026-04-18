@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # ── LLM ──
     anthropic_api_key: str = ""
-    default_model: str = "claude-sonnet-4-20250514"
+    default_model: str = "claude-haiku-4-5-20251001"
     fast_model: str = "claude-haiku-4-5-20251001"
     temperature: float = 0.5
     max_tokens: int = 1024
