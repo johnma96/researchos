@@ -24,7 +24,7 @@ dependencies = [
     "httpx>=0.27.0",
     "rank-bm25>=0.2.2",
     "pyprojroot>=0.3.0",
-    "pysqlite3-binary>=0.5.4.post2",
+    "pysqlite3-binary>=0.5.4; sys_platform == 'linux'",
 ]
 
 [project.optional-dependencies]
