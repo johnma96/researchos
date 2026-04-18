@@ -73,3 +73,27 @@
 - Resolver sqlite3 en Docker cuando llegue V4
 
 ---
+
+## 2026-04-18
+
+### Trabajo desarrollado
+- Configuración del entorno Windows:
+  - `pysqlite3-binary` marcado como dependencia solo para Linux en `pyproject.toml`
+  - Fix de `conftest.py` para que el hack de sqlite3 sea condicional por plataforma
+  - `ipykernel` agregado como dependencia dev y kernel registrado manualmente
+  - `pyproject.toml` consolidado: dependencias dev unificadas en `[dependency-groups]`
+  - Autor actualizado: John Mario Montoya Zapata
+- `ensure_dirs()` implementada en `paths.py` — centraliza creación de directorios
+- Manejo de errores en `arxiv.py`: validación de respuesta antes de parsear XML
+- `ingest_papers()` completada en `ingestion_service.py`:
+  - Orquesta: arXiv → descarga PDF → chunking → Chroma
+  - Descarga paralela con `asyncio.gather()`
+  - Parámetros configurables: `chunk_size`, `overlap`, `collection_name`
+  - Probada en notebook con `max_results=2` — funcionó correctamente
+
+### Próximos pasos
+- Copiar `data/samples/sample_pdf.pdf` desde el servidor Linux a Windows
+- Dataset de evaluación: 20 preguntas con respuestas de referencia
+- Consultar con tutor: múltiples colecciones en Chroma, parámetros de `ingest_papers`
+
+---

@@ -161,6 +161,26 @@ Regla simple para ResearchOS:
 - Hack de pysqlite3 en `conftest.py`, no en código de producción. Se resolverá en Dockerfile en V4.
 
 
+**Fecha:** 18/04/2026
+
+### ¿Qué aprendí?
+- en función del nombre de la colección los textos se guardan aisladamente
+- el await asyncio.gather no tiene mucha razón de ser si justamente después de éste viene un ciclo for que procesa en orden cada resultado recuperado -> Preguntar a mi tutor
+- Cuando estoy en un script .py y quiero disparar una función async, no puedo usar await (esto solo en el REPL o en notebooks), tengo que usar asyncio.run -> Verificar y preguntar cómo sería algo con create_task()
+
+### ¿Qué no entendí bien?
+- Debo consultar si se puede hacer una consulta general en chroma sin importar la colección para que busque en absolutamente toda la base -> Lo que entiendo es que chroma divide los documentos guardamos conforme las colecciones
+
+### Decisiones de diseño
+-
+
+### Errores interesantes
+- `uv run pip list` en Windows mostraba el entorno global de pipx en lugar del `.venv` del proyecto — engañoso. La forma correcta de verificar es `uv run python -c "import <paquete>; print('ok')"` o `uv run python -c "import sys; print(sys.executable)"`.
+- `ipykernel` no se instala automáticamente con `jupyter` en `uv` — debe agregarse explícitamente como dependencia dev. Sin él, Jupyter no puede registrar el kernel del proyecto. Solución: `uv add --dev ipykernel` y luego `uv run python -m ipykernel install --user --name researchos --display-name "ResearchOS"`.
+- `pysqlite3-binary` solo tiene wheels para Linux — en Windows sqlite3 ya viene actualizado con Python. Solución: `"pysqlite3-binary>=0.5.4; sys_platform == 'linux'"` en `pyproject.toml`.
+- El hack de sqlite3 en `conftest.py` fallaba en Windows porque `pysqlite3` no existe ahí. Solución: condicional por plataforma `if sys.platform == "linux":` antes del import.
+- `asyncio.gather` sin `await` no ejecuta las coroutines — retorna un objeto coroutine sin resolver. Siempre `await asyncio.gather(...)`.
+- `Path.stem` retorna el nombre del archivo sin extensión — más limpio que hacer `split(os.sep)[-1].split('.pdf')[0]` sobre un string.
 
 **Fecha:** _[completar]_
 
