@@ -8,18 +8,30 @@ from researchos.domain.models import Message
 
 
 class AnthropicLLM:
-    """Contract for Claude provider."""
+    """Anthropic Claude implementation of the LLMProvider protocol.
+
+    Wraps the async Anthropic SDK client, reading model configuration
+    from application settings. Supports both single-shot generation and
+    token-by-token streaming.
+    """
 
     def __init__(self):
+        """Initialize the client using credentials and defaults from settings."""
         self.client = AsyncAnthropic(api_key=settings.anthropic_api_key)
         self.model_id = settings.default_model
         self.temperature = settings.temperature
         self.max_tokens = settings.max_tokens
 
     def _format_messages(self, messages: list[Message]) -> tuple[str | None, list[dict]]:
-        """
-        Separa el system prompt (si existe) y formatea los mensajes
-        para el esquema que espera Anthropic.
+        """Split out the system prompt and convert messages to the Anthropic wire format.
+
+        Args:
+            messages: Conversation history including optional system message.
+
+        Returns:
+            A tuple of (system_prompt, formatted_messages) where system_prompt is
+            the content of the first system-role message (or None), and
+            formatted_messages is the remaining messages as dicts.
         """
         system_prompt = None
         formatted = []
@@ -33,7 +45,19 @@ class AnthropicLLM:
         return system_prompt, formatted
 
     async def generate(self, messages: list[Message]) -> str:
-        """Generate a response from a list of messages."""
+        """Generate a complete response from a conversation history.
+
+        Args:
+            messages: Conversation history. A system-role message, if present,
+                is extracted and sent as the Anthropic ``system`` parameter.
+
+        Returns:
+            The text content of the first content block in the response.
+
+        Raises:
+            GenerationError: If the model returns an empty response.
+            anthropic.APIError: On network or API-level failures.
+        """
 
         system, formatted_msgs = self._format_messages(messages)
 
@@ -51,7 +75,18 @@ class AnthropicLLM:
             raise GenerationError("Claude returned empty response")
 
     async def stream(self, messages: list[Message]) -> AsyncIterator[str]:
-        """Stream a response token by token."""
+        """Stream a response token by token from a conversation history.
+
+        Args:
+            messages: Conversation history. A system-role message, if present,
+                is extracted and sent as the Anthropic ``system`` parameter.
+
+        Yields:
+            Successive text chunks as they arrive from the model.
+
+        Raises:
+            anthropic.APIError: On network or API-level failures.
+        """
 
         system, formatted_msgs = self._format_messages(messages)
 

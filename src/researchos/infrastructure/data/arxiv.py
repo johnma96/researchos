@@ -13,6 +13,19 @@ NS = {
 
 
 async def search_papers(query: str, max_results: int) -> list[Paper]:
+    """Search for papers on arXiv using the public API.
+
+    Args:
+        query: Search query string (supports arXiv query syntax).
+        max_results: Maximum number of papers to return.
+
+    Returns:
+        List of Paper objects parsed from the arXiv Atom feed.
+
+    Raises:
+        httpx.HTTPStatusError: If the HTTP request fails.
+        IngestionError: If the response cannot be parsed as XML.
+    """
     params = {"search_query": query, "start": 0, "max_results": max_results}
 
     async with httpx.AsyncClient() as client:
@@ -22,6 +35,17 @@ async def search_papers(query: str, max_results: int) -> list[Paper]:
 
 
 def _parse_entries(results: httpx.Response) -> list[Paper]:
+    """Parse an arXiv Atom XML response into a list of Paper objects.
+
+    Args:
+        results: The raw HTTP response from the arXiv API.
+
+    Returns:
+        List of Paper objects, one per ``<entry>`` element.
+
+    Raises:
+        IngestionError: If the response body is not valid XML.
+    """
     if not results.text.strip().startswith("<"):
         raise IngestionError(f"arXiv returned unexpected response: {results.text[:100]}")
 
