@@ -6,12 +6,27 @@ from researchos.paths import CHROMA_DIR
 
 
 class ChromaVectorStore:
+    """ChromaDB-backed implementation of the VectorStore protocol.
+
+    Uses a local persistent Chroma database and a LocalEmbedder to convert
+    text to vectors. The embedding space metric (cosine, L2, etc.) is
+    configured via ``embedder_metadata``.
+    """
+
     def __init__(
         self,
         embedder: LocalEmbedder,
         collection_name: str = "papers",
         embedder_metadata: dict | None = None,
     ):
+        """Initialize the store and open (or create) the Chroma collection.
+
+        Args:
+            embedder: The embedder used to convert text to dense vectors.
+            collection_name: Name of the Chroma collection to use.
+            embedder_metadata: HNSW / distance-space settings passed to Chroma.
+                Defaults to ``{"hnsw:space": "cosine"}``.
+        """
         self.embedder = embedder
         self.embedder_metadata = embedder_metadata or {"hnsw:space": "cosine"}
         self.client = chromadb.PersistentClient(path=str(CHROMA_DIR))
@@ -20,7 +35,15 @@ class ChromaVectorStore:
         )
 
     async def search(self, query: str, k: int) -> list[Document]:
-        """Search for the top-k most relevant documents."""
+        """Search for the top-k most relevant documents.
+
+        Args:
+            query: Natural-language query string.
+            k: Number of results to return.
+
+        Returns:
+            List of Document objects sorted by relevance score (descending).
+        """
 
         query_embedding = self.embedder.embed(query)
         retrieved_docs = self.collection.query(
@@ -45,7 +68,14 @@ class ChromaVectorStore:
         return results
 
     async def upsert(self, documents: list[Document]) -> None:
-        """Insert or update documents in the store."""
+        """Insert or update documents in the store.
+
+        Embeddings are computed in batch for all documents. Existing documents
+        with the same ``doc_id`` are overwritten.
+
+        Args:
+            documents: Documents to index. Each must have a unique ``doc_id``.
+        """
 
         vectors = self.embedder.embed_batch([doc.text for doc in documents])
 
@@ -59,6 +89,15 @@ class ChromaVectorStore:
         )
 
     def _distance_to_score(self, distance: float) -> float:
+        """Convert a Chroma distance value to a [0, 1] similarity score.
+
+        Args:
+            distance: Raw distance returned by Chroma (interpretation depends
+                on the HNSW space configured in ``embedder_metadata``).
+
+        Returns:
+            Similarity score in [0, 1] where 1 is a perfect match.
+        """
         space = self.embedder_metadata.get("hnsw:space", "cosine")
         if space == "cosine":
             return 1 - (distance / 2)

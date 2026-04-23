@@ -10,6 +10,16 @@ from researchos.paths import PAPERS_DIR
 
 
 async def sequential_benchmark(query: str, max_results: int):
+    """Download papers one at a time and report total elapsed time.
+
+    Intended as a baseline to compare against the parallel strategy. Uses a
+    synchronous ``httpx.Client`` inside an async function, so downloads block
+    the event loop sequentially.
+
+    Args:
+        query: arXiv search query string.
+        max_results: Number of papers to fetch and download.
+    """
     start_time = time.perf_counter()
 
     papers = await search_papers(query, max_results)
@@ -34,6 +44,15 @@ async def sequential_benchmark(query: str, max_results: int):
 
 
 async def parallel_benchmark(query: str, max_results: int):
+    """Download all papers concurrently and report total elapsed time.
+
+    Uses ``asyncio.gather`` to fire all downloads at the same time, showing the
+    speedup over the sequential strategy.
+
+    Args:
+        query: arXiv search query string.
+        max_results: Number of papers to fetch and download.
+    """
     start_time = time.perf_counter()
 
     papers = await search_papers(query, max_results)
@@ -47,6 +66,17 @@ async def parallel_benchmark(query: str, max_results: int):
 
 
 async def _download_one_paper(paper: Paper):
+    """Download a single paper PDF to PAPERS_DIR using an async HTTP client.
+
+    The filename is derived from the first author's name and publication year,
+    with non-alphanumeric characters replaced by underscores.
+
+    Args:
+        paper: Paper whose ``pdf_url`` will be fetched.
+
+    Raises:
+        httpx.HTTPStatusError: If the download request fails.
+    """
     url = paper.pdf_url
     pdf_name = paper.authors[0].lower().strip()
     pdf_name = re.sub(r"[^a-z0-9_]", "_", pdf_name)

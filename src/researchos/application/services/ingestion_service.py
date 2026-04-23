@@ -15,11 +15,37 @@ from researchos.paths import PAPERS_DIR
 
 
 async def extract_text_pdf(paper: Paper) -> tuple[str, Path]:
+    """Download a paper's PDF and extract its full text.
+
+    Args:
+        paper: Paper whose ``pdf_url`` will be fetched.
+
+    Returns:
+        A tuple of (extracted_text, local_pdf_path).
+
+    Raises:
+        httpx.HTTPStatusError: If the PDF download fails.
+        IngestionError: If no text can be extracted from the PDF.
+    """
     pdf_path = await _download_pdf(paper=paper)
     return _extract_text(pdf_path=pdf_path), pdf_path
 
 
 async def _download_pdf(paper: Paper) -> Path:
+    """Download the PDF for a paper and save it to PAPERS_DIR.
+
+    The filename is derived from the first author's name and the publication year,
+    with non-alphanumeric characters replaced by underscores.
+
+    Args:
+        paper: Paper to download.
+
+    Returns:
+        Path to the saved PDF file.
+
+    Raises:
+        httpx.HTTPStatusError: If the download request fails.
+    """
     url = paper.pdf_url
     pdf_name = paper.authors[0].lower().strip()
     pdf_name = re.sub(r"[^a-z0-9_]", "_", pdf_name)
@@ -37,6 +63,17 @@ async def _download_pdf(paper: Paper) -> Path:
 
 
 def _extract_text(pdf_path: Path) -> str:
+    """Extract all text from a PDF file using PyMuPDF.
+
+    Args:
+        pdf_path: Path to the local PDF file.
+
+    Returns:
+        Concatenated plain text from all pages.
+
+    Raises:
+        IngestionError: If the PDF yields no extractable text.
+    """
     full_text = ""
     doc = fitz.open(pdf_path)
     for page in doc:
@@ -56,6 +93,26 @@ async def ingest_papers(
     collection_name: str = "papers",
     embedder_metadata: dict | None = None,
 ) -> None:
+    """Search arXiv, download PDFs, chunk text, and upsert into the vector store.
+
+    This is the top-level ingestion pipeline. It orchestrates:
+    1. arXiv search → list of Paper objects.
+    2. Parallel PDF download + text extraction.
+    3. Overlap chunking of each paper.
+    4. Batch upsert into ChromaDB.
+
+    Args:
+        query: arXiv search query string.
+        max_results: Number of papers to fetch from arXiv.
+        chunk_size: Character length of each text chunk.
+        overlap: Number of characters to overlap between consecutive chunks.
+        collection_name: Target Chroma collection name.
+        embedder_metadata: Optional HNSW settings forwarded to ChromaVectorStore.
+
+    Raises:
+        IngestionError: If any PDF cannot be downloaded or yields no text.
+        httpx.HTTPStatusError: On network failures during download.
+    """
     embedder = LocalEmbedder()
     store = ChromaVectorStore(
         embedder=embedder, collection_name=collection_name, embedder_metadata=embedder_metadata

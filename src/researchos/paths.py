@@ -10,7 +10,12 @@ CHROMA_DIR = DATA_DIR / "chroma"
 
 
 def ensure_dirs() -> None:
-    """Create all data directories if they don't exist."""
+    """Create all data directories if they don't exist.
+
+    Iterates over every Path-typed global in this module (excluding
+    PROJECT_ROOT) and calls ``mkdir(parents=True, exist_ok=True)`` on each.
+    Safe to call multiple times.
+    """
     dirs = [v for v in globals().values() if isinstance(v, Path) and v != PROJECT_ROOT]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)

@@ -13,6 +13,16 @@ path_examples = SAMPLES_DIR / "eval_dataset.json"
 async def answer_question(
     question: str, store: VectorStore, max_results: int = 10
 ) -> list[Document]:
+    """Retrieve and print the top documents for a question.
+
+    Args:
+        question: Natural-language question to answer.
+        store: VectorStore to search against.
+        max_results: Maximum number of documents to retrieve.
+
+    Returns:
+        List of retrieved Document objects sorted by score.
+    """
     results = await store.search(query=question, k=max_results)
     for r in results:
         print(f"\nscore: {r.score:.3f}")
@@ -21,6 +31,7 @@ async def answer_question(
 
 
 async def main() -> None:
+    """Load the evaluation dataset and run retrieval for every question."""
     with open(path_examples, encoding="utf-8") as f:
         data = json.load(f)
 
