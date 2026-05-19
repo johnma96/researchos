@@ -18,7 +18,8 @@ venv/
 
 # ── Data (local persistence — too large for git) ──
 data/chroma/
-data/raw/
+data/raw/*
+!data/raw/.gitkeep
 *.pdf
 
 # ── IDE ──

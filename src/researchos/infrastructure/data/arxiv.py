@@ -1,3 +1,18 @@
+"""arXiv data client — Fetches paper metadata from the arXiv Atom API.
+
+Uses the public arXiv query API (``https://export.arxiv.org/api/query``)
+to search for papers by keyword and parses the Atom XML response into
+:class:`~researchos.domain.models.Paper` domain objects.
+
+No authentication is required.  Rate limits apply: the arXiv ToS asks
+callers to stay below 3 requests per second.
+
+Example:
+    >>> from researchos.infrastructure.data.arxiv import search_papers
+    >>> papers = await search_papers("LLM agents", max_results=5)
+    >>> papers[0].title
+    'ReAct: Synergizing Reasoning and Acting in Language Models'
+"""
 import xml.etree.ElementTree as ET
 
 import httpx
@@ -13,6 +28,25 @@ NS = {
 
 
 async def search_papers(query: str, max_results: int) -> list[Paper]:
+    """Search arXiv for papers matching a query string.
+
+    Sends a GET request to the arXiv Atom API and parses the response
+    into a list of :class:`~researchos.domain.models.Paper` objects.
+
+    Args:
+        query: arXiv search query string.  Supports the ``all:``, ``ti:``,
+            ``au:``, ``abs:`` field prefixes (e.g. ``"ti:LLM agents"``).
+        max_results: Maximum number of papers to return.  ArXiv caps this
+            at 30 000; realistic values are 1–50 for ingestion runs.
+
+    Returns:
+        List of :class:`~researchos.domain.models.Paper` objects populated
+        with title, abstract, authors, URL, PDF URL, and categories.
+
+    Raises:
+        IngestionError: If the API response is not valid XML.
+        httpx.HTTPStatusError: If the HTTP request fails.
+    """
     params = {"search_query": query, "start": 0, "max_results": max_results}
 
     async with httpx.AsyncClient() as client:
@@ -22,6 +56,19 @@ async def search_papers(query: str, max_results: int) -> list[Paper]:
 
 
 def _parse_entries(results: httpx.Response) -> list[Paper]:
+    """Parse an arXiv Atom API response into a list of Paper objects.
+
+    Args:
+        results: The raw :class:`httpx.Response` from the arXiv API.
+
+    Returns:
+        List of :class:`~researchos.domain.models.Paper` objects, one per
+        ``<entry>`` element found in the Atom feed.
+
+    Raises:
+        IngestionError: If the response body does not start with ``<``
+            (i.e. is not XML), which typically indicates an API error page.
+    """
     if not results.text.strip().startswith("<"):
         raise IngestionError(f"arXiv returned unexpected response: {results.text[:100]}")
 
