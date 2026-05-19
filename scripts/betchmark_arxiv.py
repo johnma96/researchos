@@ -1,3 +1,17 @@
+"""Benchmark script — Compares sequential vs. concurrent PDF download speed.
+
+Measures wall-clock time for downloading a batch of arXiv papers using two
+strategies: sequential (one request at a time) and parallel (all requests
+concurrent via ``asyncio.gather``).  Results are printed to stdout.
+
+Usage:
+    uv run python scripts/betchmark_arxiv.py
+
+Note:
+    The filename contains a deliberate typo (``betchmark`` instead of
+    ``benchmark``) preserved from the original commit; do not rename without
+    also updating Makefile references.
+"""
 import asyncio
 import re
 import time
@@ -9,7 +23,17 @@ from researchos.infrastructure.data.arxiv import search_papers
 from researchos.paths import PAPERS_DIR
 
 
-async def sequential_benchmark(query: str, max_results: int):
+async def sequential_benchmark(query: str, max_results: int) -> None:
+    """Download arXiv papers sequentially and report elapsed time.
+
+    Fetches paper metadata, then downloads each PDF one after the other
+    using a synchronous :class:`httpx.Client` inside an ``async`` function.
+    Use this as the baseline to compare against :func:`parallel_benchmark`.
+
+    Args:
+        query: arXiv search query string (e.g. ``"LLM agents"``).
+        max_results: Number of papers to download.
+    """
     start_time = time.perf_counter()
 
     papers = await search_papers(query, max_results)
@@ -33,7 +57,17 @@ async def sequential_benchmark(query: str, max_results: int):
     print(f"Sequential benchmark completed in {end_time - start_time} seconds")
 
 
-async def parallel_benchmark(query: str, max_results: int):
+async def parallel_benchmark(query: str, max_results: int) -> None:
+    """Download arXiv papers concurrently and report elapsed time.
+
+    Fetches paper metadata, then downloads all PDFs simultaneously using
+    :func:`asyncio.gather` and :func:`_download_one_paper`.  Compare
+    against :func:`sequential_benchmark` to measure the concurrency speedup.
+
+    Args:
+        query: arXiv search query string (e.g. ``"LLM agents"``).
+        max_results: Number of papers to download in parallel.
+    """
     start_time = time.perf_counter()
 
     papers = await search_papers(query, max_results)
@@ -46,7 +80,20 @@ async def parallel_benchmark(query: str, max_results: int):
     print(f"Parallel betchmark completed in {end_time - start_time} seconds")
 
 
-async def _download_one_paper(paper: Paper):
+async def _download_one_paper(paper: Paper) -> None:
+    """Download a single paper PDF and save it to ``PAPERS_DIR``.
+
+    Derives the local filename from the first author's name
+    (lowercased, sanitised) and publication year, matching the convention
+    used by the ingestion service.
+
+    Args:
+        paper: A :class:`~researchos.domain.models.Paper` with ``pdf_url``,
+            ``authors``, and ``published_date`` populated.
+
+    Raises:
+        httpx.HTTPStatusError: If the download request fails.
+    """
     url = paper.pdf_url
     pdf_name = paper.authors[0].lower().strip()
     pdf_name = re.sub(r"[^a-z0-9_]", "_", pdf_name)

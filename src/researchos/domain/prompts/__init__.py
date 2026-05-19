@@ -52,6 +52,18 @@ class PromptTemplate:
     """
 
     def __init__(self, category: str, name: str) -> None:
+        """Load the prompt template file from disk.
+
+        Args:
+            category: Subdirectory name under ``domain/prompts/``
+                (e.g. ``"system"``, ``"tasks"``).
+            name: Template filename without the ``.txt`` extension
+                (e.g. ``"extraction"``).
+
+        Raises:
+            PromptNotFoundError: If the file ``{category}/{name}.txt``
+                does not exist inside the prompts directory.
+        """
         self._path = _PROMPTS_DIR / category / f"{name}.txt"
         if not self._path.exists():
             raise PromptNotFoundError(
@@ -75,4 +87,10 @@ class PromptTemplate:
         return self._template.format(**kwargs) if kwargs else self._template
 
     def __repr__(self) -> str:
+        """Return an unambiguous string representation of the template.
+
+        Returns:
+            String of the form ``PromptTemplate('<category>/<name>.txt')``
+            relative to the prompts directory root.
+        """
         return f"PromptTemplate('{self._path.relative_to(_PROMPTS_DIR)}')"
