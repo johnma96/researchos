@@ -44,6 +44,7 @@ dev = [
     "pre-commit>=3.8.0",
     "jupyter>=1.0.0",
     "ipykernel>=6.0.0",
+    "pytest-cov>=7.1.0",
 ]
 
 [tool.ruff]
@@ -66,6 +67,7 @@ markers = [
     "unit: Unit tests (no external dependencies)",
     "integration: Integration tests (may require APIs or DB)",
 ]
+addopts = "--cov=src/researchos --cov-report=term-missing"
 
 [tool.mypy]
 python_version = "3.11"
