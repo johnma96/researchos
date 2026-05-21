@@ -1,3 +1,17 @@
+"""Ingestion service — Orchestrates the end-to-end paper ingestion pipeline.
+
+This service coordinates three sequential steps:
+1. Fetch paper metadata from arXiv via :func:`search_papers`.
+2. Download and extract raw text from each PDF.
+3. Chunk the text and upsert the resulting documents into the vector store.
+
+Design note:
+    Concrete infrastructure (``ChromaVectorStore``, ``LocalEmbedder``) is
+    instantiated here rather than injected, because ``ingest_papers`` is an
+    operational entry-point (called by CLI scripts), not a reusable
+    application-layer use-case that needs swappable dependencies.
+"""
+
 import asyncio
 import re
 from pathlib import Path
@@ -18,33 +32,38 @@ async def extract_text_pdf(paper: Paper) -> tuple[str, Path]:
     """Download a paper's PDF and extract its full text.
 
     Args:
-        paper: Paper whose ``pdf_url`` will be fetched.
+        paper: A :class:`~researchos.domain.models.Paper` whose ``pdf_url``
+            and ``authors`` fields are populated.
 
     Returns:
-        A tuple of (extracted_text, local_pdf_path).
+        A tuple of ``(full_text, local_pdf_path)`` where ``full_text`` is
+        the concatenated text extracted from all pages, and ``local_pdf_path``
+        is the path where the PDF was saved on disk.
 
     Raises:
-        httpx.HTTPStatusError: If the PDF download fails.
-        IngestionError: If no text can be extracted from the PDF.
+        IngestionError: If the PDF contains no extractable text.
+        httpx.HTTPStatusError: If the download request fails.
     """
     pdf_path = await _download_pdf(paper=paper)
     return _extract_text(pdf_path=pdf_path), pdf_path
 
 
 async def _download_pdf(paper: Paper) -> Path:
-    """Download the PDF for a paper and save it to PAPERS_DIR.
+    """Download the PDF for a paper and save it to ``PAPERS_DIR``.
 
-    The filename is derived from the first author's name and the publication year,
-    with non-alphanumeric characters replaced by underscores.
+    The local filename is derived from the first author's last name
+    (lowercased, non-alphanumeric characters replaced with underscores)
+    and the publication year (e.g. ``vaswani_2017.pdf``).
 
     Args:
-        paper: Paper to download.
+        paper: A :class:`~researchos.domain.models.Paper` with a valid
+            ``pdf_url``, ``authors`` list, and ``published_date``.
 
     Returns:
-        Path to the saved PDF file.
+        The absolute ``Path`` where the PDF was saved.
 
     Raises:
-        httpx.HTTPStatusError: If the download request fails.
+        httpx.HTTPStatusError: If the HTTP request returns a non-2xx status.
     """
     url = paper.pdf_url
     pdf_name = paper.authors[0].lower().strip()
@@ -63,16 +82,17 @@ async def _download_pdf(paper: Paper) -> Path:
 
 
 def _extract_text(pdf_path: Path) -> str:
-    """Extract all text from a PDF file using PyMuPDF.
+    """Extract all text from a PDF file using PyMuPDF (fitz).
 
     Args:
-        pdf_path: Path to the local PDF file.
+        pdf_path: Absolute path to the PDF file on disk.
 
     Returns:
-        Concatenated plain text from all pages.
+        Concatenated plain-text content of all pages in the PDF.
 
     Raises:
-        IngestionError: If the PDF yields no extractable text.
+        IngestionError: If the extracted text is empty (e.g. scanned PDF
+            without OCR or DRM-protected file).
     """
     full_text = ""
     doc = fitz.open(pdf_path)
@@ -93,25 +113,31 @@ async def ingest_papers(
     collection_name: str = "papers",
     embedder_metadata: dict | None = None,
 ) -> None:
-    """Search arXiv, download PDFs, chunk text, and upsert into the vector store.
+    """Fetch, chunk, and index papers from arXiv into the vector store.
 
-    This is the top-level ingestion pipeline. It orchestrates:
-    1. arXiv search → list of Paper objects.
-    2. Parallel PDF download + text extraction.
-    3. Overlap chunking of each paper.
-    4. Batch upsert into ChromaDB.
+    This is the main entry-point for the ingestion pipeline.  It runs
+    PDF downloads concurrently using :func:`asyncio.gather`, then processes
+    each paper serially to avoid overwhelming the embedder.
 
     Args:
-        query: arXiv search query string.
-        max_results: Number of papers to fetch from arXiv.
-        chunk_size: Character length of each text chunk.
-        overlap: Number of characters to overlap between consecutive chunks.
-        collection_name: Target Chroma collection name.
-        embedder_metadata: Optional HNSW settings forwarded to ChromaVectorStore.
+        query: arXiv search query string (e.g. ``"LLM agents"``).
+        max_results: Maximum number of papers to fetch from arXiv.
+        chunk_size: Number of characters per text chunk.  Defaults to 500.
+        overlap: Character overlap between consecutive chunks to preserve
+            context across boundaries.  Defaults to 50.
+        collection_name: Name of the ChromaDB collection to upsert into.
+            Defaults to ``"papers"``.
+        embedder_metadata: Optional HNSW metadata dict forwarded to ChromaDB
+            (e.g. ``{"hnsw:space": "cosine"}``).  If ``None``, the
+            ``ChromaVectorStore`` default is used.
+
+    Returns:
+        None.  Side-effects: PDFs saved to ``PAPERS_DIR``, chunks upserted
+        into the vector store.
 
     Raises:
-        IngestionError: If any PDF cannot be downloaded or yields no text.
-        httpx.HTTPStatusError: On network failures during download.
+        IngestionError: If any PDF cannot be downloaded or has no
+            extractable text.
     """
     embedder = LocalEmbedder()
     store = ChromaVectorStore(

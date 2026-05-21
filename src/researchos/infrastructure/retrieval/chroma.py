@@ -1,3 +1,15 @@
+"""Chroma vector store — Concrete implementation of the ``VectorStore`` Protocol.
+
+Persists document embeddings to disk using ChromaDB's ``PersistentClient``.
+All embedding computation is delegated to :class:`LocalEmbedder` so the store
+remains agnostic to the embedding model.
+
+To swap Chroma for another backend (e.g. Qdrant, Vertex Search), create a new
+file in ``infrastructure/retrieval/`` that implements the same four-method
+interface (``search``, ``upsert``) defined in
+:class:`~researchos.domain.interfaces.VectorStore`.
+"""
+
 import chromadb
 
 from researchos.domain.models import Document
@@ -6,11 +18,18 @@ from researchos.paths import CHROMA_DIR
 
 
 class ChromaVectorStore:
-    """ChromaDB-backed implementation of the VectorStore protocol.
+    """Persistent vector store backed by ChromaDB.
 
-    Uses a local persistent Chroma database and a LocalEmbedder to convert
-    text to vectors. The embedding space metric (cosine, L2, etc.) is
-    configured via ``embedder_metadata``.
+    Implements the :class:`~researchos.domain.interfaces.VectorStore` Protocol.
+    Embeddings are computed locally via :class:`LocalEmbedder` and stored in a
+    ChromaDB collection on disk at :data:`~researchos.paths.CHROMA_DIR`.
+
+    Attributes:
+        embedder: The :class:`LocalEmbedder` used to vectorise queries and documents.
+        embedder_metadata: HNSW index configuration forwarded to the ChromaDB
+            collection (e.g. ``{"hnsw:space": "cosine"}``).
+        client: ChromaDB :class:`chromadb.PersistentClient` instance.
+        collection: The active ChromaDB collection.
     """
 
     def __init__(
@@ -18,14 +37,17 @@ class ChromaVectorStore:
         embedder: LocalEmbedder,
         collection_name: str = "papers",
         embedder_metadata: dict | None = None,
-    ):
-        """Initialize the store and open (or create) the Chroma collection.
+    ) -> None:
+        """Initialise the persistent vector store.
 
         Args:
-            embedder: The embedder used to convert text to dense vectors.
-            collection_name: Name of the Chroma collection to use.
-            embedder_metadata: HNSW / distance-space settings passed to Chroma.
-                Defaults to ``{"hnsw:space": "cosine"}``.
+            embedder: A :class:`LocalEmbedder` instance used for both query
+                embedding and batch document embedding.
+            collection_name: Name of the ChromaDB collection to use or create.
+                Defaults to ``"papers"``.
+            embedder_metadata: HNSW metadata for the collection
+                (e.g. ``{"hnsw:space": "cosine"}``).  If ``None``, defaults
+                to ``{"hnsw:space": "cosine"}``.
         """
         self.embedder = embedder
         self.embedder_metadata = embedder_metadata or {"hnsw:space": "cosine"}
@@ -35,16 +57,21 @@ class ChromaVectorStore:
         )
 
     async def search(self, query: str, k: int) -> list[Document]:
-        """Search for the top-k most relevant documents.
+        """Search for the top-k most relevant documents using cosine similarity.
+
+        Embeds the query with :class:`LocalEmbedder`, queries the ChromaDB
+        collection, and converts raw results to typed
+        :class:`~researchos.domain.models.Document` objects with normalised
+        relevance scores.
 
         Args:
-            query: Natural-language query string.
-            k: Number of results to return.
+            query: Natural-language search string.
+            k: Number of top documents to return.
 
         Returns:
-            List of Document objects sorted by relevance score (descending).
+            List of :class:`~researchos.domain.models.Document` objects ordered
+            by descending relevance score (best match first).
         """
-
         query_embedding = self.embedder.embed(query)
         retrieved_docs = self.collection.query(
             query_embeddings=[query_embedding],
@@ -68,15 +95,18 @@ class ChromaVectorStore:
         return results
 
     async def upsert(self, documents: list[Document]) -> None:
-        """Insert or update documents in the store.
+        """Insert or update documents in the ChromaDB collection.
 
-        Embeddings are computed in batch for all documents. Existing documents
-        with the same ``doc_id`` are overwritten.
+        Embeds all document texts in a single batch call to the embedder,
+        then calls ChromaDB ``upsert`` (insert-or-replace) so the operation
+        is idempotent: re-ingesting the same paper does not create duplicates.
 
         Args:
-            documents: Documents to index. Each must have a unique ``doc_id``.
+            documents: List of :class:`~researchos.domain.models.Document`
+                objects to persist.  Documents with an empty ``metadata`` dict
+                receive a fallback ``{"source": "unknown"}`` entry to satisfy
+                ChromaDB's non-null constraint.
         """
-
         vectors = self.embedder.embed_batch([doc.text for doc in documents])
 
         self.collection.upsert(
@@ -89,14 +119,21 @@ class ChromaVectorStore:
         )
 
     def _distance_to_score(self, distance: float) -> float:
-        """Convert a Chroma distance value to a [0, 1] similarity score.
+        """Convert a ChromaDB distance value to a [0, 1] relevance score.
+
+        ChromaDB returns distances whose interpretation depends on the HNSW
+        distance space configured for the collection:
+
+        - ``cosine``: distance ∈ [0, 2]; score = ``1 - distance / 2``.
+        - ``l2`` (Euclidean): distance ∈ [0, ∞); score = ``1 / (1 + distance)``.
+        - Anything else: score = ``1 - distance`` (assumes distance ∈ [0, 1]).
 
         Args:
-            distance: Raw distance returned by Chroma (interpretation depends
-                on the HNSW space configured in ``embedder_metadata``).
+            distance: Raw distance value returned by ChromaDB.
 
         Returns:
-            Similarity score in [0, 1] where 1 is a perfect match.
+            Normalised relevance score where 1.0 is a perfect match and
+            0.0 is maximally dissimilar.
         """
         space = self.embedder_metadata.get("hnsw:space", "cosine")
         if space == "cosine":

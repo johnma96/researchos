@@ -12,7 +12,28 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from .env and environment variables."""
+    """Application settings loaded from .env and environment variables.
+
+    All fields are populated from the ``.env`` file at the project root or
+    from environment variables (case-insensitive).  Each section maps to a
+    specific external service or runtime concern:
+
+    - **Environment:** controls the execution mode (development / staging / production).
+    - **LLM:** Anthropic credentials and generation parameters.
+    - **Vector store:** backend selection (Chroma | Vertex) and persistence path.
+    - **Memory:** conversation history backend (in-memory | SQLite).
+    - **Embeddings:** sentence-transformer model used for embedding.
+    - **Telegram:** bot token and target chat for morning briefings.
+    - **API:** host and port for the FastAPI server.
+    - **News (V2):** NewsAPI key for RSS / news sources.
+    - **Monitoring (V3):** Langfuse credentials for LLM observability.
+    - **GCP (V4):** Google Cloud project for Vertex AI and BigQuery.
+
+    Example:
+        >>> from researchos.config import settings
+        >>> print(settings.default_model)
+        claude-haiku-4-5-20251001
+    """
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,6 +61,8 @@ class Settings(BaseSettings):
 
     # ── Embeddings ──
     embedding_model: str = "all-MiniLM-L6-v2"
+    # Set to an absolute local path to load the model from disk (no HuggingFace needed).
+    embedding_model_local_path: str = ""
 
     # ── Telegram ──
     telegram_bot_token: str = ""
@@ -62,6 +85,14 @@ class Settings(BaseSettings):
 
     @property
     def project_root(self) -> Path:
+        """Absolute path to the repository root.
+
+        Computed by walking three levels up from this file
+        (``src/researchos/config.py`` → ``src/researchos/`` → ``src/`` → root).
+
+        Returns:
+            Path: Absolute ``Path`` object pointing to the project root directory.
+        """
         return Path(__file__).resolve().parent.parent.parent
 
 
