@@ -1,102 +1,102 @@
 [
     {
-        "question": "What are the three coupled dimensions of externalization in LLM agents as described by Zhou et al. (2026)?",
-        "reference_answer": "The three coupled dimensions are memory (externalized state), skills (externalized procedural expertise), and protocols (externalized interaction structure).",
-        "source_paper": "chenyu_zhou_2026.pdf"
-    },
-    {
-        "question": "What is the primary function of the 'harness' in an externalized agent architecture?",
-        "reference_answer": "The harness is the engineering layer that coordinates memory, skills, and protocols into governed execution, providing the orchestration logic, constraints, observability, and feedback loops necessary for practical agency.",
-        "source_paper": "chenyu_zhou_2026.pdf"
-    },
-    {
-        "question": "How does externalized memory transform the cognitive task for a Large Language Model?",
-        "reference_answer": "Externalization transforms a difficult internal recall problem (regenerating knowledge from latent weights) into an external recognition and retrieval problem, where the agent identifies relevant information surfaced from a persistent store.",
-        "source_paper": "chenyu_zhou_2026.pdf"
-    },
-    {
-        "question": "In the context of skill externalization, what are the three essential components of 'procedural expertise'?",
-        "reference_answer": "Procedural expertise consists of operational procedures (the task skeleton), decision heuristics (rules for branching points), and normative constraints (safety and compliance boundaries).",
-        "source_paper": "chenyu_zhou_2026.pdf"
-    },
-    {
-        "question": "What is the definition of 'cognitive flow' within the framework proposed by Dissanayake and Nanayakkara (2025)?",
-        "reference_answer": "Cognitive flow is defined as an optimal psychological state of deep focus and intrinsic motivation that occurs when the challenge of a task is perfectly balanced with an individual's skill level.",
+        "question": "What is the definition of 'cognitive flow' in the context of AI-augmented reasoning systems?",
+        "reference_answer": "Cognitive flow is an optimal psychological state of deep focus and intrinsic motivation that occurs when the challenge of a task is perfectly matched to an individual's skill level.",
         "source_paper": "dinithi_dissanayake_2025.pdf"
     },
     {
-        "question": "What are the three key contextual factors that determine the effectiveness of AI interventions for reasoning support?",
-        "reference_answer": "The three factors are the type of intervention (e.g., direct feedback vs. Socratic questioning), the timing of the intervention (knowing when the user is 'stuck'), and the scale or magnitude of the intervention.",
+        "question": "What three key contextual factors determine the effectiveness of AI interventions for reasoning support?",
+        "reference_answer": "The three critical factors are the type of intervention (e.g., direct feedback vs. Socratic questioning), the timing of the intervention (knowing when the user is 'stuck'), and the scale or magnitude of the intervention.",
         "source_paper": "dinithi_dissanayake_2025.pdf"
     },
     {
         "question": "How can AI systems leverage multimodal cues to infer a user's cognitive load in real-time?",
-        "reference_answer": "AI systems can monitor behavioral cues such as gaze behavior (anticipation patterns), typing hesitation, interaction speed, and physiological signals to dynamically adjust cognitive support.",
+        "reference_answer": "AI systems can monitor behavioral cues such as gaze behavior (anticipation patterns), typing hesitation, gesture patterns, interaction speed, and physiological signals to dynamically adjust cognitive support.",
         "source_paper": "dinithi_dissanayake_2025.pdf"
     },
     {
-        "question": "What is the core objective of the ILR (Interactive Learning for LLM Reasoning) framework?",
-        "reference_answer": "The core objective of ILR is to investigate whether multi-agent interaction during training can enhance an LLM's independent problem-solving capacity during inference, effectively internalizing insights from peer interaction.",
+        "question": "How should an AI system adjust its intervention when a task is too easy for the user to maintain cognitive flow?",
+        "reference_answer": "The AI should increase cognitive demand by introducing counterarguments, critiques, or prompts that encourage deeper critical thinking and reflective thought processes.",
+        "source_paper": "dinithi_dissanayake_2025.pdf"
+    },
+    {
+        "question": "What are the two core components of the ILR (Interactive Learning for LLM Reasoning) framework?",
+        "reference_answer": "The ILR framework integrates two key components: Dynamic Interaction and Perception Calibration.",
         "source_paper": "hehai_lin_2025.pdf"
     },
     {
-        "question": "Describe the three sequential stages of the 'Idea3' framework for agent communication.",
-        "reference_answer": "The Idea3 framework consists of Idea Sharing (proposing initial solutions), Idea Analysis (critically evaluating peer contributions), and Idea Fusion (synthesizing insights into a refined final answer).",
+        "question": "Describe the three sequential stages of the 'Idea3' framework for multi-agent communication.",
+        "reference_answer": "The Idea3 framework consists of Idea Sharing (proposing initial solutions), Idea Analysis (critically evaluating and reflecting on peer contributions), and Idea Fusion (synthesizing insights into a refined final answer).",
         "source_paper": "hehai_lin_2025.pdf"
     },
     {
-        "question": "How does the ILR system decide between cooperation and competition strategies during training?",
-        "reference_answer": "The system utilizes Item Response Theory (IRT) to estimate the probability of the model solving a question independently based on its capability and the question's difficulty; cooperation is selected if the probability is low (Pq < 0.5), while competition is chosen otherwise.",
+        "question": "How does the ILR framework dynamically select between cooperation and competition strategies?",
+        "reference_answer": "The framework uses Item Response Theory (IRT) to estimate the probability (Pq) of the model solving a question independently based on its capability and the question's difficulty; cooperation is selected if the probability is low (Pq < 0.5), while competition is chosen otherwise.",
         "source_paper": "hehai_lin_2025.pdf"
     },
     {
-        "question": "What is 'Perception Calibration' in the ILR framework and how is it implemented?",
-        "reference_answer": "Perception Calibration is an automated mechanism that integrates the reward distribution characteristics (max, min, and average scores) of one LLM into another LLM's reward function using Group Relative Policy Optimization (GRPO) to strengthen interaction cohesion.",
+        "question": "What is the purpose of 'Perception Calibration' in the ILR training process?",
+        "reference_answer": "Perception Calibration is an automated mechanism that integrates the reward distribution characteristics of one LLM into another's reward function using Group Relative Policy Optimization (GRPO), allowing models to perceive the quality of peer solutions and strengthening interaction cohesion.",
         "source_paper": "hehai_lin_2025.pdf"
     },
     {
-        "question": "How does the DeepSeek-R1-1.5B model compare to significantly larger models like CodeLlama-13B as a discriminator for SQL tasks?",
-        "reference_answer": "Despite having significantly fewer parameters, DeepSeek-R1-1.5B outranks CodeLlama-13B as a discriminator, achieving higher execution accuracy and much higher classification F1 scores in text-to-SQL tasks.",
+        "question": "What is the primary difference in set-level objectives between 'comparative shopping' and 'bundle shopping' in RecoAtlas?",
+        "reference_answer": "Comparative shopping emphasizes non-redundancy (providing credible alternatives while avoiding near-duplicates), whereas bundle shopping emphasizes complementarity (providing a coherent set of products that work together or fill different roles).",
+        "source_paper": "imad_aouali_2026.pdf"
+    },
+    {
+        "question": "What three behavior-grounded reward models does RecoAtlas use to evaluate recommendation sets?",
+        "reference_answer": "The three reward models are Relevance Reward (query-item match), Complementarity Reward (item-item compatibility), and Diversity Reward (non-redundancy/substitutability).",
+        "source_paper": "imad_aouali_2026.pdf"
+    },
+    {
+        "question": "What did the RecoAtlas study reveal about the alignment between LLM-as-a-judge scoring and behavior-grounded utility (SetHit@20)?",
+        "reference_answer": "They are poorly aligned; LLM judges often favor semantically plausible reports that do not necessarily capture behavior-grounded utility, and can even reverse the ranking induced by actual shopping objectives.",
+        "source_paper": "imad_aouali_2026.pdf"
+    },
+    {
+        "question": "How does recommendation utility in RecoAtlas scale with model size and reasoning deliberation?",
+        "reference_answer": "Utility scales strongly with both model capacity and test-time reasoning; larger models benefit significantly more from deliberation to interpret tool outputs and assemble complex 20-item sets effectively.",
+        "source_paper": "imad_aouali_2026.pdf"
+    },
+    {
+        "question": "How does the 1.5B distilled DeepSeek-R1 model compare to significantly larger models like CodeLlama-13B as a discriminator for SQL tasks?",
+        "reference_answer": "Despite its smaller size, DeepSeek-R1-1.5B outranks CodeLlama-13B as a discriminator, achieving higher execution accuracy and classification F1 scores by leveraging its inherent reasoning capabilities.",
         "source_paper": "md_fahim_anjum_2025.pdf"
     },
     {
-        "question": "What happens to the discrimination performance of reasoning models when the test-time compute budget is increased beyond 1024 tokens?",
-        "reference_answer": "Increasing the token budget beyond this threshold yields diminishing returns (less than 0.4% gain), and longer outputs tend to become more repetitive and lexically redundant rather than more insightful.",
+        "question": "What phenomenon was observed regarding test-time compute (token budget) for reasoning models in SQL discrimination?",
+        "reference_answer": "Increasing compute budget yields diminishing returns; performance peaks around 1024 tokens, beyond which additional tokens provide marginal gains (<0.4%) and often lead to repetitive, redundant outputs.",
         "source_paper": "md_fahim_anjum_2025.pdf"
     },
     {
-        "question": "Is the reasoning model DeepSeek-R1 more effective as a generator or a discriminator in SQL parsing?",
-        "reference_answer": "DeepSeek-R1 is far more effective as a discriminator; it performs poorly as a generator, where even smaller non-reasoning models like TinyLlama-1.1B deliver higher-quality SQL outputs.",
+        "question": "Is the reasoning model DeepSeek-R1 more effective as a generator or a discriminator in text-to-SQL tasks?",
+        "reference_answer": "DeepSeek-R1 is far more effective as a discriminator; it performs poorly as a generator, where it is outperformed even by smaller non-reasoning models like TinyLlama-1.1B.",
         "source_paper": "md_fahim_anjum_2025.pdf"
     },
     {
-        "question": "What novel method was proposed to extract soft scores from reasoning models for fine-grained ranking?",
-        "reference_answer": "The method prompts the model to output a final answer in a specific JSON format with the key 'correct', identifies the logits for the values 'true' or 'false', and normalizes them via a softmax function to obtain a probability score.",
+        "question": "What method was proposed to extract soft scores from the chain-of-thought (CoT) outputs of reasoning models?",
+        "reference_answer": "The method prompts the model to output a final answer in a specific JSON format, identifies the logit for the predicted value ('true' or 'false'), and normalizes it using a softmax function to obtain a probability score.",
         "source_paper": "md_fahim_anjum_2025.pdf"
     },
     {
-        "question": "How is 'analogical reasoning' defined by Musker et al. (2024)?",
-        "reference_answer": "Analogical reasoning is defined as the capacity to identify and map structural relationships between different domains (source and target) to transfer knowledge and recognize abstract patterns.",
-        "source_paper": "sam_musker_2024.pdf"
-    },
-    {
-        "question": "What is 'flexible re-representation' and why is it essential for solving non-trivial analogies?",
+        "question": "What is 'flexible re-representation' and why is it central to analogical reasoning?",
         "reference_answer": "Flexible re-representation is the ability to dynamically restructure how concepts are encoded based on task-relevant features; it is essential because real-world concepts have many attributes, and the system must identify which ones are relevant to a specific mapping.",
         "source_paper": "sam_musker_2024.pdf"
     },
     {
-        "question": "How did human subjects and LLMs differ in their response to misleading semantic structure in the Study 1 'Randoms' condition?",
-        "reference_answer": "Humans were able to ignore irrelevant words and switch to a strategy relying only on the target domain patterns, whereas LLMs appeared distracted by the random lexical items and showed significant performance drops.",
+        "question": "What specific limitation did GPT-4 demonstrate in the numeric conditions of the Semantic Content experiment in Musker et al. (2024)?",
+        "reference_answer": "GPT-4 failed to correctly relate the number of characters in a response to the numeric property of an object (e.g., number of legs or wheels), likely due to a deficiency in counting or numeric reasoning rather than analogical reasoning itself.",
         "source_paper": "sam_musker_2024.pdf"
     },
     {
-        "question": "What specific limitation did GPT-4 demonstrate in the numeric conditions of the Semantic Content experiment?",
-        "reference_answer": "GPT-4 failed to correctly relate the number of characters in a response to the numeric property of the object (e.g., number of wheels or legs), which is attributed to a deficiency in counting or numeric reasoning rather than analogical reasoning itself.",
+        "question": "How do humans and LLMs differ when faced with random, unrelated words in the source domain of an analogy task?",
+        "reference_answer": "Humans are able to identify when the source domain lacks useful structure and employ a strategy relying only on target domain patterns, whereas LLMs appear distracted by the random lexical items and show significant performance drops.",
         "source_paper": "sam_musker_2024.pdf"
     },
     {
-        "question": "How does the analogical reasoning performance of Claude 3 Opus compare to human performance across the studied conditions?",
-        "reference_answer": "Claude 3 Opus demonstrated robust performance that matched human levels across all conditions of the Semantic Content experiment and exhibited more flexibility than earlier models like GPT-4 in handling complex mapping tasks.",
+        "question": "Which advanced LLM demonstrated the most robust performance across all analogical reasoning conditions, matching human levels in both studies?",
+        "reference_answer": "Claude 3 Opus matched human performance across all conditions of both the Semantic Structure and Semantic Content experiments.",
         "source_paper": "sam_musker_2024.pdf"
     }
 ]
