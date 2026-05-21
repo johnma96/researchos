@@ -21,10 +21,9 @@ import httpx
 
 from researchos.application.services.retrieval_service import chunk_to_document, overlap_chunking
 from researchos.domain.exceptions import IngestionError
+from researchos.domain.interfaces import VectorStore
 from researchos.domain.models import Paper
 from researchos.infrastructure.data.arxiv import search_papers
-from researchos.infrastructure.retrieval.chroma import ChromaVectorStore
-from researchos.infrastructure.retrieval.embedder import LocalEmbedder
 from researchos.paths import PAPERS_DIR
 
 
@@ -110,6 +109,7 @@ async def ingest_papers(
     max_results: int,
     chunk_size: int = 500,
     overlap: int = 50,
+    store: VectorStore | None = None,
     collection_name: str = "papers",
     embedder_metadata: dict | None = None,
 ) -> None:
@@ -125,11 +125,13 @@ async def ingest_papers(
         chunk_size: Number of characters per text chunk.  Defaults to 500.
         overlap: Character overlap between consecutive chunks to preserve
             context across boundaries.  Defaults to 50.
-        collection_name: Name of the ChromaDB collection to upsert into.
-            Defaults to ``"papers"``.
-        embedder_metadata: Optional HNSW metadata dict forwarded to ChromaDB
-            (e.g. ``{"hnsw:space": "cosine"}``).  If ``None``, the
-            ``ChromaVectorStore`` default is used.
+        store: A VectorStore implementation to upsert documents into.
+            If ``None``, a default ``ChromaVectorStore`` is created using
+            ``collection_name`` and ``embedder_metadata``.
+        collection_name: Chroma collection name used only when ``store`` is
+            ``None``.  Defaults to ``"papers"``.
+        embedder_metadata: HNSW settings forwarded to ``ChromaVectorStore``
+            when ``store`` is ``None``.
 
     Returns:
         None.  Side-effects: PDFs saved to ``PAPERS_DIR``, chunks upserted
@@ -139,10 +141,15 @@ async def ingest_papers(
         IngestionError: If any PDF cannot be downloaded or has no
             extractable text.
     """
-    embedder = LocalEmbedder()
-    store = ChromaVectorStore(
-        embedder=embedder, collection_name=collection_name, embedder_metadata=embedder_metadata
-    )
+    if store is None:
+        from researchos.infrastructure.retrieval.chroma import ChromaVectorStore
+        from researchos.infrastructure.retrieval.embedder import LocalEmbedder
+
+        store = ChromaVectorStore(
+            embedder=LocalEmbedder(),
+            collection_name=collection_name,
+            embedder_metadata=embedder_metadata,
+        )
 
     papers = await search_papers(query, max_results)
 
