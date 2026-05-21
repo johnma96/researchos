@@ -1,11 +1,12 @@
 """Local embedder — Sentence-transformer-based text embedding.
 
-Provides synchronous embedding of single texts and batches using a locally
-downloaded ``sentence-transformers`` model (default: ``all-MiniLM-L6-v2``).
-The model is downloaded on first use and cached by the ``sentence-transformers``
-library in the system's HuggingFace cache directory.
+Loads from a local directory when ``EMBEDDING_MODEL_LOCAL_PATH`` is set in
+the environment — useful on networks where HuggingFace is blocked.
+Falls back to downloading ``EMBEDDING_MODEL`` from HuggingFace otherwise.
 """
 from sentence_transformers import SentenceTransformer
+
+from researchos.config import settings
 
 
 class LocalEmbedder:
@@ -19,15 +20,15 @@ class LocalEmbedder:
         model: Loaded :class:`sentence_transformers.SentenceTransformer` instance.
     """
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
+    def __init__(self) -> None:
         """Load the sentence-transformer model.
 
-        Args:
-            model_name: Name of the model to load from HuggingFace Hub or
-                the local cache.  Defaults to ``"all-MiniLM-L6-v2"``
-                (384-dimensional embeddings, fast inference).
+        Uses ``EMBEDDING_MODEL_LOCAL_PATH`` from settings when set (offline mode).
+        Falls back to downloading ``EMBEDDING_MODEL`` from HuggingFace Hub.
         """
-        self.model = SentenceTransformer(model_name)
+        source = settings.embedding_model_local_path or settings.embedding_model
+        local_only = bool(settings.embedding_model_local_path)
+        self.model = SentenceTransformer(source, local_files_only=local_only)
 
     def embed(self, text: str) -> list[float]:
         """Embed a single text string into a dense vector.
