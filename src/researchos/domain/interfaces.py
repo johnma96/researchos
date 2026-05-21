@@ -73,6 +73,22 @@ class VectorStore(Protocol):
         ...
 
 
+class Retriever(Protocol):
+    """Contract for any retriever strategy (vectorization, BM25, etc.)."""
+
+    async def search(self, query: str, k: int) -> list[Document]:
+        """Search for the top-k most relevant documents.
+
+        Args:
+            query: Natural-language query string.
+            k: Number of results to return.
+
+        Returns:
+            List of Document objects sorted by relevance score (descending).
+        """
+        ...
+
+
 class MemoryStore(Protocol):
     """Contract for conversational memory persistence."""
 
