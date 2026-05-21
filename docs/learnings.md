@@ -182,19 +182,47 @@ Regla simple para ResearchOS:
 - `asyncio.gather` sin `await` no ejecuta las coroutines — retorna un objeto coroutine sin resolver. Siempre `await asyncio.gather(...)`.
 - `Path.stem` retorna el nombre del archivo sin extensión — más limpio que hacer `split(os.sep)[-1].split('.pdf')[0]` sobre un string.
 
-**Fecha:** _[completar]_
+**Fecha:** 21/05/2026
 
 ### ¿Qué aprendí?
--
+
+**Protocols y Clean Architecture — el propósito real**
+- Recibir `VectorStore` en lugar de `ChromaVectorStore` desacopla la capa de aplicación de la infraestructura. Beneficios concretos: (1) testabilidad — se inyecta un mock sin tocar BD real; (2) intercambiabilidad — cambiar de Chroma a Qdrant solo requiere crear una nueva clase que cumpla el Protocol, sin tocar código de negocio; (3) contrato explícito — el Protocol documenta exactamente qué necesita la aplicación.
+- Los Protocols en Python se validan en tiempo de chequeo estático (mypy), NO en runtime. En runtime Python no lanza error si falta un método — solo falla cuando se llama. En proyectos maduros mypy corre en CI como barrera automática.
+- Structural subtyping ("duck typing con tipos"): una clase satisface un Protocol simplemente teniendo los métodos con las mismas firmas — no necesita heredar explícitamente ni declararlo.
+
+**RAG: vector search vs BM25 vs hybrid**
+- Búsqueda vectorial: texto → embedding → similitud coseno. Encuentra contenido semánticamente cercano aunque las palabras sean distintas.
+- BM25: recuperación por coincidencia exacta de términos, ponderada por frecuencia y rareza. Trabaja en memoria, sin base vectorial. Fuerte donde el vectorial falla: siglas, nombres propios, términos técnicos exactos.
+- Hybrid search: combina ambos resultados con Reciprocal Rank Fusion (RRF). El objetivo no es más chunks sino mejor ranking, considerando señales semánticas y de coincidencia exacta simultáneamente.
+
+**Cobertura de tests por capa**
+- Infraestructura (`arxiv.py`, `chroma.py`, `embedder.py`) tiene baja cobertura unitaria por diseño — dependen de sistemas externos y pertenecen a tests de integración.
+- Medir cobertura de código sin tests asociados solo genera ruido en el reporte.
+- `addopts` en `[tool.pytest.ini_options]` pasa flags automáticamente a cada ejecución de pytest.
+- `isinstance` no puede verificar tipos genéricos como `tuple[str, Path]` en runtime — hay que usar assertions separadas por elemento.
+
+**BM25 y la relación con la base vectorial**
+- Chroma cumple dos roles distintos: persistencia de chunks en disco y retrieval vectorial. BM25 solo necesita el primero — usa Chroma como almacén y construye su propio índice en memoria con `collection.get()`.
+- Los scores de BM25 y vectorial son incomparables directamente: BM25 retorna frecuencias ponderadas (sin límite superior), vectorial retorna similitud coseno (0 a 1). RRF resuelve esto comparando posiciones en el ranking, no scores absolutos.
+- Una función `async` que no contiene `await` es perfectamente válida — se resuelve inmediatamente sin suspenderse. Útil para que BM25Retriever sea uniforme con ChromaVectorStore en `asyncio.gather()`.
+- `model_copy(update={...})` en Pydantic crea una copia del objeto con campos modificados sin mutar el original — necesario para asignar el `score` calculado en cada búsqueda.
 
 ### ¿Qué no entendí bien?
--
+- El rol práctico del event loop a nivel de programación (cuándo y por qué interactuar con él directamente).
+- Cómo integrar mypy en el pipeline de CI para que valide Protocols automáticamente.
 
 ### Decisiones de diseño
--
+- `BM25Retriever` implementa el Protocol `Retriever` (solo `search`) — no `VectorStore` (que exige también `upsert`). `ChromaVectorStore` satisface ambos por structural subtyping.
+- `BM25Retriever.search` definido como `async` aunque opera en memoria, para ser uniforme con `ChromaVectorStore` y poder usarse en `asyncio.gather()` en el hybrid search.
+- `ingest_papers` acepta `store: VectorStore | None = None` — imports de infraestructura son lazy dentro de la función para no violar la dependencia application → infrastructure a nivel de módulo.
+- Tests de cobertura se acumulan en lotes por sesión dedicada, no después de cada feature.
+- Tokenizador de BM25 inyectado como callable (`tokenizer=None`) en lugar de string selector — más flexible y Pythónico.
 
 ### Errores interesantes
--
+- `registry.py` y `PromptTemplate` hacían lo mismo — tener ambos era redundancia. Se eliminó `registry.py` y se consolidó en `PromptTemplate.render()`.
+- El reporte de un bug en `overlap_chunking` era incorrecto: la lógica `start = i * (chunk_size - overlap)` produce un paso fijo, no un overlap acumulativo. Verificar con math antes de reportar un bug.
+- `isinstance` no puede verificar tipos genéricos como `tuple[str, Path]` en runtime — usar assertions separadas por elemento.
 
 ---
 <!-- Copiar plantilla para cada semana -->
