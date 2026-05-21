@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -39,5 +40,8 @@ async def test_extract_text_pdf():
     ):
         result = await extract_text_pdf(paper=paper)
 
-    assert isinstance(result, str)
-    assert len(result) > 0
+    assert isinstance(result, tuple)
+    assert isinstance(result[0], str)
+    assert isinstance(result[1], Path)
+
+    assert len(result) == 2
