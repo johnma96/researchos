@@ -97,3 +97,24 @@
 - Consultar con tutor: múltiples colecciones en Chroma, parámetros de `ingest_papers`
 
 ---
+
+## 2026-05-21
+
+### Trabajo desarrollado
+- Docstrings Google-style agregados a 12 módulos: `arxiv.py`, `anthropic_llm.py`, `chroma.py`, `embedder.py`, `ingestion_service.py`, `retrieval_service.py`, `paths.py`, `models.py`, `exceptions.py`, `interfaces.py`, `registry.py`, `benchmark_arxiv.py`, `eval_retrieval.py`.
+- `pysqlite3-binary` agregado como dependencia Linux en `pyproject.toml`; celda de patch sqlite3 agregada a notebook 007.
+- Notebooks reordenados: 003=retriever_service, 004=chroma-VectorStore, 005=ingestion_service (refleja orden de dependencias).
+- `registry.py` eliminado; `PromptTemplate.render()` es ahora el único mecanismo de carga de prompts.
+- `ingestion_service.py` refactorizado: `store: VectorStore | None = None` como parámetro, imports de infraestructura lazy dentro de la función.
+- `test_ingestion_service.py` actualizado: assertions separadas para verificar `tuple[str, Path]`.
+- `pytest-cov` agregado con `addopts = "--cov=src/researchos --cov-report=term-missing"` — cobertura global 76% unit, 83% con integración.
+- Protocol `Retriever` creado en `domain/interfaces.py` con solo `search` (sin `upsert`).
+- `BM25Retriever` implementado en `infrastructure/retrieval/bm25.py`: índice en memoria con `BM25Okapi`, tokenizador inyectable, `search` async, scores vía `model_copy`.
+- Notebook `008-jmmz-bm25-retrieval.ipynb` creado para comparar BM25 vs vectorial sobre la misma query.
+
+### Próximos pasos
+- T7: Hybrid search con Reciprocal Rank Fusion en `retrieval_service.py`
+- T8: Reranker con Claude sobre top-10 del hybrid
+- Re-ejecutar evaluación comparando las cuatro estrategias
+
+---
