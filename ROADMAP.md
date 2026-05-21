@@ -2,17 +2,17 @@
 
 ## Abril 2026 — V1 pipeline RAG básico
 - [x] T1: AnthropicLLM provider (completado 30 mar)
-- [ ] T2: Cliente arXiv API
-- [ ] T3: Servicio de ingesta PDFs
-- [ ] T4: Chunking fijo
-- [ ] T5: Integración end-to-end
+- [x] T2: Cliente arXiv API (completado 13 abr)
+- [x] T3: Servicio de ingesta PDFs (completado 15 abr)
+- [x] T4: Chunking fijo (completado 17 abr)
+- [x] T5: Integración end-to-end (completado 18 abr)
 
 ## Mayo 2026 — V1 hybrid search y evaluación
 - [ ] T6: BM25 retrieval
 - [ ] T7: Hybrid search
 - [ ] T8: Reranker básico
-- [ ] T9: Dataset de evaluación (20 preguntas)
-- [ ] T10: Script de evaluación
+- [x] T9: Dataset de evaluación (20 preguntas) (completado 18 abr)
+- [x] T10: Script de evaluación (completado 18 abr)
 
 ## Junio 2026 — V2 LangGraph
 - [ ] T11: Refactor a LangGraph
