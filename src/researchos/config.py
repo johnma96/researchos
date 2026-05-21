@@ -61,6 +61,8 @@ class Settings(BaseSettings):
 
     # ── Embeddings ──
     embedding_model: str = "all-MiniLM-L6-v2"
+    # Set to an absolute local path to load the model from disk (no HuggingFace needed).
+    embedding_model_local_path: str = ""
 
     # ── Telegram ──
     telegram_bot_token: str = ""
