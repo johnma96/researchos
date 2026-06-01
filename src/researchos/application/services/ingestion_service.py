@@ -19,7 +19,7 @@ from pathlib import Path
 import fitz
 import httpx
 
-from researchos.application.services.retrieval_service import chunk_to_document, overlap_chunking
+from researchos.application.services.chunking_service import chunk_to_document, overlap_chunking
 from researchos.domain.exceptions import IngestionError
 from researchos.domain.interfaces import VectorStore
 from researchos.domain.models import Paper
