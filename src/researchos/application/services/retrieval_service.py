@@ -99,6 +99,10 @@ async def hybrid_rerank_search(
     message = Message(role="user", content=prompt)
     llm_answer = await llm.generate([message])
 
+    # Extract the JSON array from the response — Claude may wrap it in markdown or add text.
+    start = llm_answer.find("[")
+    end = llm_answer.rfind("]") + 1
+    ranked_ids = json.loads(llm_answer[start:end])
+
     docs_by_id = {doc.doc_id: doc for doc in documents}
-    ranked_ids = json.loads(llm_answer)
-    return [docs_by_id[doc_id] for doc_id in ranked_ids[:k]]
+    return [docs_by_id[doc_id] for doc_id in ranked_ids[:k] if doc_id in docs_by_id]
