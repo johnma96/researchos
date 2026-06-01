@@ -1,6 +1,6 @@
 import pytest
 
-from researchos.application.services.retrieval_service import chunk_to_document, overlap_chunking
+from researchos.application.services.chunking_service import chunk_to_document, overlap_chunking
 from researchos.domain.models import Chunk, Document
 
 
