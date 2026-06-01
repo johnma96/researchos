@@ -118,3 +118,24 @@
 - Re-ejecutar evaluación comparando las cuatro estrategias
 
 ---
+
+## 2026-06-01
+
+### Trabajo desarrollado
+- Refactor: `retrieval_service.py` renombrado a `chunking_service.py`; nuevo `retrieval_service.py` creado para orquestación de retrieval.
+- T7 completado: `hybrid_search` en `retrieval_service.py` con RRF, `asyncio.gather` paralelo, deduplicación y top-k. Test unitario verifica que documento en ambos retrievers gana el ranking.
+- T8 completado: `hybrid_rerank_search` en `retrieval_service.py` — usa Claude como juez para reordenar candidatos del hybrid. Prompt en `domain/prompts/tasks/rerank.txt`. Parseo robusto del JSON de respuesta con extracción por `find("[")`.
+- T9 completado: `scripts/eval_retrieval.py` refactorizado para comparar las cuatro estrategias (vector, BM25, hybrid, hybrid+rerank) con métricas P@k y MRR. Resultados: vector=1.000/1.000, bm25=0.950/0.925, hybrid=1.000/1.000, hybrid+rerank=1.000/1.000.
+- 25/25 tests unitarios pasando.
+
+### Análisis de resultados
+- Resultados altos esperados: el eval dataset fue construido sobre los mismos documentos indexados (data leakage). En producción con queries reales los scores serían menores.
+- BM25 levemente inferior al vectorial — falla en una pregunta sobre `imad_aouali_2026` y tiene RR=0.50 en una pregunta sobre Idea3 (lo encuentra en posición 2 en lugar de 1).
+- Hybrid y hybrid+rerank igualan al vectorial en este corpus controlado.
+
+### Próximos pasos
+- Merge de `feature/v1-infrastructure-setup` a `main` — V1 completada.
+- Nombrar siguiente rama por feature concreta (e.g. `feature/v1-hybrid-rerank` ya hecho, próxima podría ser `feature/v2-telegram-bot`).
+- Evaluar con queries reales para obtener métricas más representativas.
+
+---

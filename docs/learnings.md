@@ -224,5 +224,23 @@ Regla simple para ResearchOS:
 - El reporte de un bug en `overlap_chunking` era incorrecto: la lógica `start = i * (chunk_size - overlap)` produce un paso fijo, no un overlap acumulativo. Verificar con math antes de reportar un bug.
 - `isinstance` no puede verificar tipos genéricos como `tuple[str, Path]` en runtime — usar assertions separadas por elemento.
 
+**Fecha:** 01/06/2026
+
+### ¿Qué aprendí?
+- hybrid rerank con LLM com juez busca solucionar el problema de orden de los retrievers que se basan exclusivamente en el score y que no toman en cuenta el contexto de la pregunta como es el caso de BM25
+- en asyncio.gather lo que debo tener en mente es que se pasan argumentos por lo que el operador * lo que hace es desempaquetar tuplas o listas
+- los mocks de protocolos personaizados se realizan en conftest.py, los que involucran llamados a serivicos externos son reemplazados por mocks en librerías estandar
+- Para que una evaluación de un retriever sea justa es necesario que el set de evaluación no sufra de data leakege, esto es, que no conozco qué hay explicitamente en el corpus actual. Mi conjunto está sesgado porque se hizo exactamente con documentos que sí o sí ya sabíamos que estaban en el vector store
+
+### ¿Qué no entendí bien?
+- Debo profundizar sobre métricas de evaluación de un retriever. Entiendo que el MRR mide en qué posición es recuperado un documento y luego se saca un promedio, pero no me queda claro cómo opera esta métrica en el caso por ejemplo de un RAG donde el corpus son ejemplos históricos como el de PQRs.
+
+### Decisiones de diseño
+- Modificamos retrieval_service para que quedar acomo chunking service y agregamos un retrieval service real que se enfoca justamente en un servicio de retreival
+
+### Errores interesantes
+- Claude puede devolver JSON envuelto en markdown o con texto adicional — `json.loads()` falla. Solución: extraer el array con `find("[")` y `rfind("]")` antes de parsear.
+- Las lambdas en un dict de estrategias capturan variables del scope exterior por referencia — en este caso no fue problema, pero es un antipatrón a tener en mente si las variables cambian en el loop.
+
 ---
 <!-- Copiar plantilla para cada semana -->
