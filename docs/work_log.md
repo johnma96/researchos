@@ -139,3 +139,31 @@
 - Evaluar con queries reales para obtener métricas más representativas.
 
 ---
+
+## 2026-07-29
+
+### Trabajo desarrollado
+- Retorno al proyecto tras pausa de ~8 semanas; taller de retorno a ResearchOS
+  completado (~60%, sección 7 saltada por decisión consciente)
+- Sistema de estudio conceptual implementado: skills `interview-bank`,
+  `weekly-essay`, `git-commits`, `arquitectura-drawio` y `daily-closeout`
+  agregadas en `.claude/skills/`
+- Banco de preguntas poblado (`docs/interview_prep/bank.md`) con 15 preguntas
+  semilla derivadas del taller — Clean Architecture (5), Protocols (3), RAG y
+  retrieval (4), Async (3) — con archivos por tema regenerados en `by_topic/`
+- Estructura de `docs/interview_prep/weekly_drafts/` y `docs/essays/prompts/`
+  completada
+- Revisión de cierre de jornada sobre `docs/learnings.md`: corregidos tres
+  errores conceptuales en la entrada de hoy (dirección de dependencia
+  infrastructure↔application, ubicación de la lógica de negocio, terminología
+  de composición de agentes), dejando registro en "¿Qué no entendí bien?"
+  para monitorear en próximas sesiones
+
+### Próximos pasos
+- Jueves 30/07: refuerzo arquitectural (diagramas de flujo + reescritura
+  de respuestas 8.1–8.4 del taller)
+- Viernes 31/07: primer ciclo real del sistema (banco semanal + ensayo)
+- Verificar en próximas sesiones si los tres conceptos corregidos hoy en
+  learnings.md ya quedaron interiorizados
+
+---
