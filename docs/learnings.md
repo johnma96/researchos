@@ -224,6 +224,8 @@ Regla simple para ResearchOS:
 - El reporte de un bug en `overlap_chunking` era incorrecto: la lógica `start = i * (chunk_size - overlap)` produce un paso fijo, no un overlap acumulativo. Verificar con math antes de reportar un bug.
 - `isinstance` no puede verificar tipos genéricos como `tuple[str, Path]` en runtime — usar assertions separadas por elemento.
 
+---
+
 **Fecha:** 01/06/2026
 
 ### ¿Qué aprendí?
@@ -243,4 +245,25 @@ Regla simple para ResearchOS:
 - Las lambdas en un dict de estrategias capturan variables del scope exterior por referencia — en este caso no fue problema, pero es un antipatrón a tener en mente si las variables cambian en el loop.
 
 ---
-<!-- Copiar plantilla para cada semana -->
+
+**Fecha:** 29/07/2026
+
+### ¿Qué aprendí?
+- Se repasaron conceptos de Clean Architecture: application se codifica contra domain; infrastructure también se codifica contra domain (para implementar sus Protocols) e infrastructure sí importa de application — por ejemplo, un router o un bot llaman a un service como `rag_service.answer_query`. Lo que nunca ocurre es que domain importe de alguien, o que application importe de infrastructure.
+- Se refuerza la idea de sumar contribuciones en Reciprocal Rank Fusion (RRF) porque así se premia el consenso entre retrievers. Si se promediara, un rank muy alto se compensaría con la ausencia en otro y se perdería la señal de que 2 o más retrievers coincidieron. -> Aún falta reforzar e interiorizar más este concepto
+- las funciones asíncronas existen para permitir que el event loop pueda ejecutar otras corrutinas mientras se realizan operaciones de I/O, por ejemplo cuando se hace una petición HTTP. Es diferente a trabajo paralelo porque ese trabajo sí requiere uso de CPU. La analogía es un mesero que atiende muchas mesas: en lugar de quedarse esperando, pide al chef que prepare un plato y mientras tanto va y toma el pedido en otra mesa o la limpia.
+- Los agentes importan funciones de `agent_utils.py` (composición) en lugar de heredar de una clase base, porque así, si se modifica un método de la clase base, todos los agentes heredarían el cambio (y un posible error), mientras que con composición solo se ve afectado el agente que efectivamente importa esa función. Es menos elegante pero más aislado.
+
+### ¿Qué no entendí bien?
+- Me hicieron preguntas sobre cómo evaluar un RAG. Entendí que la manera es con métricas claras y un ground truth que viene de dos fuentes: (a) una entidad externa que no conoce el contenido de la BD vectorial y por tanto no está sesgada, y (b) retroalimentación de producción señalando si una recuperación fue buena o mala. Las queries que fallan no son una tercera fuente de verdad — se etiquetan y se mandan a un dataset de regresión para monitoreo futuro, eso es manejo de fallos, no una fuente adicional de ground truth. No tengo claras las métricas concretas (formulación matemática, en qué se sustentan) ni si existen herramientas de evaluación automática de RAG en el mercado o solo metodologías.
+- **[corregido hoy]** Dirección de dependencia infrastructure↔application: escribí dos veces en esta misma entrada que "infrastructure nunca importa de application" — es al revés, infrastructure sí importa de application (routers/bots llaman a services). Es la misma confusión de dirección de dependencias ya fichada como hueco recurrente; revisar en próximas sesiones si ya quedó interiorizada.
+- **[corregido hoy]** Ubicación de la lógica de negocio: escribí que infrastructure incluye "lógica propia del negocio" — no es así, la lógica de negocio vive en domain/application; infrastructure es solo detalle técnico (SDKs, llamados a APIs, drivers).
+- **[corregido hoy]** Terminología de composición de agentes: escribí "los agentes exportan de agent_utils.py" — es al revés, `agent_utils.py` exporta funciones y los agentes las importan/consumen.
+
+### Decisiones de diseño
+- Se decide modificar el esquema de trabajo: con 5h/semana se van a emplear cerca de 4 en el desarrollo de código y 1h en la revisión conceptual: llenado de un banco de preguntas y revisión de un ensayo sobre un tema específico
+
+### Errores interesantes
+- Confundí la dirección de dependencia entre infrastructure y application: dije que "infrastructure nunca importa de application", cuando es lo opuesto — infrastructure sí importa de application (ej. un router o un bot llaman a un service). Lo que nunca ocurre es que domain importe de alguien o que application importe de infrastructure. Application se encarga de orquestar contra Protocols de domain; infrastructure implementa detalle técnico (SDKs, llamados a APIs, drivers) sin lógica de negocio; domain establece el contrato (requisitos de modelos y Protocols).
+
+---
