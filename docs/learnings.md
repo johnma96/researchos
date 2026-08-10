@@ -267,3 +267,38 @@ Regla simple para ResearchOS:
 - Confundí la dirección de dependencia entre infrastructure y application: dije que "infrastructure nunca importa de application", cuando es lo opuesto — infrastructure sí importa de application (ej. un router o un bot llaman a un service). Lo que nunca ocurre es que domain importe de alguien o que application importe de infrastructure. Application se encarga de orquestar contra Protocols de domain; infrastructure implementa detalle técnico (SDKs, llamados a APIs, drivers) sin lógica de negocio; domain establece el contrato (requisitos de modelos y Protocols).
 
 ---
+
+**Fecha:** 10/08/2026
+
+### ¿Qué aprendí?
+
+- **`AnswerFn = Callable[[str], Awaitable[str]]` es un alias de tipo que declara un contrato mínimo de comportamiento.** Se lee: "una función que recibe un `str` y devuelve algo que, al esperarlo, produce un `str`". Es el contrato completo que el bot de Telegram necesita conocer del motor RAG: nada más.
+
+- **Por qué `Awaitable[str]` y no `str`.** Cuando escribo `async def answer(query: str) -> str`, la anotación `-> str` describe lo que la corrutina *resuelve*, no lo que la llamada *retorna*. Llamar `answer("hola")` sin `await` devuelve una corrutina, no un string. Por eso, visto como valor de primera clase, el tipo de esa función es `Callable[[str], Awaitable[str]]`. Si escribiera `Callable[[str], str]`, estaría describiendo una función sincrónica y mypy me marcaría el error al inyectar la async.
+
+- **Un alias de función es un contrato más liviano que un Protocol.** Un Protocol declara varios métodos con nombre; `AnswerFn` declara un solo comportamiento anónimo: un parámetro, un retorno. Regla que me llevo: cuando lo que inyecto es *un solo comportamiento*, alcanza un tipo de función; cuando son *varios comportamientos relacionados que comparten estado*, ahí sí conviene un Protocol o una clase. Envolver una sola función en una clase es ceremonia sin beneficio.
+
+- **`AnswerFn` es el mecanismo concreto que hace al bot agnóstico al motor.** El bot no importa `LLMProvider`, ni `VectorStore`, ni `AnthropicLLM`, ni `ChromaVectorStore`. Solo sabe que le dieron algo llamable con esa firma. Mañana puedo cambiar el motor de vector-only a hybrid+rerank, o cambiar Chroma por Qdrant, y `telegram.py` no se entera. El mismo `AnswerFn` va a servir para Slack, para un router de FastAPI y para un CLI.
+
+- **El closure es lo que llena el contrato.** En `scripts/run_telegram_bot.py` defino `async def answer(query: str) -> str` que captura `llm` y `chroma` del scope exterior. Su firma resultante es exactamente `AnswerFn`. Las dependencias concretas quedan atrapadas en el closure y nunca cruzan la frontera hacia el bot.
+
+- **El wiring pertenece al composition root, no al adapter.** Si `telegram.py` instanciara `ChromaVectorStore`, no sería una violación de capas (ambos son `infrastructure/`), pero rompería tres cosas: el bot quedaría intesteable sin un Chroma real, agregar Slack duplicaría el wiring, y cambiar la composición del motor obligaría a editar cada canal.
+
+### ¿Qué no entendí bien?
+
+- El bot responde bien la primera pregunta y falla en la de seguimiento ("cuál es el mecanismo"). Identifiqué que son **dos** problemas distintos, no uno: (1) no hay memoria conversacional — `answer_query` no recibe historial ni `session_id`, cada mensaje es independiente; (2) aunque hubiera memoria, el retrieval seguiría fallando, porque se hace con la query cruda y "cuál es el mecanismo" es anafórica: su embedding no se parece a ningún chunk. Agregar memoria no arregla retrieval. Falta entender bien cómo se implementa el query rewriting y en qué punto del grafo va.
+
+### Decisiones de diseño
+
+- El bot recibe `answer_fn` inyectada en el constructor, no instancia infraestructura. `TelegramBot(token, answer_fn)`.
+- `run()` es `def` normal, no `async def`: `app.run_polling()` gestiona su propio event loop, así que el script de arranque es sincrónico de punta a punta. Llamarlo desde `asyncio.run` produciría un conflicto de loops.
+- Se descartó usar `context.user_data` de `python-telegram-bot` para guardar historial. Es memoria en RAM que se pierde al reiniciar, no se comparte entre canales, y pondría estado del motor en el adaptador. La memoria pertenece al motor vía el Protocol `MemoryStore`.
+- Alcance deliberado: el bot conecta `answer_query` (vector-only). Conectar hybrid search es un cambio en `application/`, no en el bot.
+
+### Errores interesantes
+
+- Escribí `self.answer_fn: answer_fn` en vez de `self.answer_fn = answer_fn`. Con dos puntos, Python lo lee como anotación de tipo, no como asignación: es sintácticamente válido, la clase se define sin error, pero **el atributo nunca se crea**. Habría explotado con `AttributeError` en el primer mensaje. Segundo error mecánico de este tipo en dos semanas (el anterior fue omitir `self` en firmas de Protocol) — es un hueco de escritura de Python, no conceptual.
+- Usé un f-string innecesario en `.token(f"{self.token}")` cuando `self.token` ya es `str`.
+- Guardé el retorno de `await update.message.reply_text(...)` en una variable sin usar.
+
+---
