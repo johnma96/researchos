@@ -1,0 +1,20 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # TODO: Implement the deploy job for your chosen platform.
+    # Examples:
+    #   - Google Cloud Run: use google-github-actions/deploy-cloudrun
+    #   - AWS ECS: use aws-actions/amazon-ecs-deploy-task-definition
+    #   - Azure Container Apps: use azure/container-apps-deploy-action
+    #   - Fly.io: use superfly/flyctl-actions
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy (not yet implemented)
+        run: echo "Configure your deployment target in .github/workflows/deploy.yml"

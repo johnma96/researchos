@@ -16,7 +16,8 @@ Usage in tests:
             pass
 """
 
-from typing import AsyncIterator, Protocol
+from collections.abc import AsyncIterator
+from typing import Protocol
 
 from .models import Document, Message
 
@@ -25,11 +26,25 @@ class LLMProvider(Protocol):
     """Contract for any LLM provider (Claude, Gemini, etc.)."""
 
     async def generate(self, messages: list[Message]) -> str:
-        """Generate a response from a list of messages."""
+        """Generate a complete response from a conversation history.
+
+        Args:
+            messages: Ordered list of messages including optional system prompt.
+
+        Returns:
+            Full text response from the model.
+        """
         ...
 
     async def stream(self, messages: list[Message]) -> AsyncIterator[str]:
-        """Stream a response token by token."""
+        """Stream a response token by token.
+
+        Args:
+            messages: Ordered list of messages including optional system prompt.
+
+        Yields:
+            Successive text chunks as they arrive from the model.
+        """
         ...
 
 
@@ -37,11 +52,40 @@ class VectorStore(Protocol):
     """Contract for any vector store (Chroma, Vertex Search, Qdrant, etc.)."""
 
     async def search(self, query: str, k: int) -> list[Document]:
-        """Search for the top-k most relevant documents."""
+        """Search for the top-k most relevant documents.
+
+        Args:
+            query: Natural-language query string.
+            k: Number of results to return.
+
+        Returns:
+            List of Document objects sorted by relevance score (descending).
+        """
         ...
 
     async def upsert(self, documents: list[Document]) -> None:
-        """Insert or update documents in the store."""
+        """Insert or update documents in the store.
+
+        Args:
+            documents: Documents to index. Each must have a unique ``doc_id``.
+                Existing documents with the same ID are overwritten.
+        """
+        ...
+
+
+class Retriever(Protocol):
+    """Contract for any retriever strategy (vectorization, BM25, etc.)."""
+
+    async def search(self, query: str, k: int) -> list[Document]:
+        """Search for the top-k most relevant documents.
+
+        Args:
+            query: Natural-language query string.
+            k: Number of results to return.
+
+        Returns:
+            List of Document objects sorted by relevance score (descending).
+        """
         ...
 
 
@@ -49,13 +93,29 @@ class MemoryStore(Protocol):
     """Contract for conversational memory persistence."""
 
     async def get(self, session_id: str) -> list[Message]:
-        """Retrieve conversation history for a session."""
+        """Retrieve conversation history for a session.
+
+        Args:
+            session_id: Unique identifier for the conversation session.
+
+        Returns:
+            Ordered list of messages for the session, oldest first.
+        """
         ...
 
     async def append(self, session_id: str, message: Message) -> None:
-        """Append a message to a session's history."""
+        """Append a message to a session's history.
+
+        Args:
+            session_id: Unique identifier for the conversation session.
+            message: Message to append.
+        """
         ...
 
     async def clear(self, session_id: str) -> None:
-        """Clear conversation history for a session."""
+        """Clear conversation history for a session.
+
+        Args:
+            session_id: Unique identifier for the conversation session to clear.
+        """
         ...
