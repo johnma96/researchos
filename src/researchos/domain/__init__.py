@@ -11,3 +11,6 @@ RULES:
 - All other layers depend on Domain, never the reverse
 - NEVER import from application/ or infrastructure/ here
 """
+
+from .models import Document as Document
+from .models import Message as Message

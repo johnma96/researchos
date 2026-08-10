@@ -8,7 +8,6 @@ from researchos.application.agents.agent_utils import (
     retrieve_context,
 )
 from researchos.domain.models import Document
-
 from tests.conftest import MockLLMProvider, MockVectorStore
 
 

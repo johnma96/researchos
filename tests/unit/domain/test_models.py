@@ -11,7 +11,7 @@ from researchos.domain.exceptions import (
     ResearchOSError,
     RetrievalError,
 )
-from researchos.domain.models import Chunk, Document, GeneratedAnswer, Message, Paper, Query
+from researchos.domain.models import Chunk, Message, Paper, Query
 
 
 @pytest.mark.unit

@@ -1,11 +1,17 @@
 """Shared test fixtures — mocks for Protocols and sample data."""
 
+import sys
+
 import pytest
 
 from researchos.domain.models import Chunk, Document, Message, Paper
 
+if sys.platform == "linux":
+    __import__("pysqlite3")
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 # ── Sample data fixtures ──
+
 
 @pytest.fixture
 def sample_paper() -> Paper:
@@ -50,6 +56,7 @@ def sample_documents() -> list[Document]:
 
 
 # ── Mock implementations of Protocols ──
+
 
 class MockLLMProvider:
     """Mock LLM that returns a fixed response. Implements LLMProvider Protocol."""

@@ -10,7 +10,7 @@ All prompts are in `src/researchos/domain/prompts/`:
 
 1. Create a `.txt` file in the appropriate subdirectory
 2. Use `{variable_name}` for dynamic content
-3. Load with `load_prompt("category", "name", variable=value)`
+3. Load with `PromptTemplate("category", "name").render(**kwargs)` where **kwargs are variables referenced in the template as {variable_name}.
 
 ## How to version prompts
 

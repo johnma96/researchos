@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/mario/Documentos/personal_projects/becomes_ai_engineer/clean-agents-template/**)"
+    ]
+  }
+}

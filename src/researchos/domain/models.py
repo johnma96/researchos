@@ -75,3 +75,19 @@ class GeneratedAnswer(BaseModel):
     sources: list[SearchResult] = Field(default_factory=list)
     model_used: str = ""
     tokens_used: int = 0
+
+
+class AgentInput(BaseModel):
+    """Input payload for an agent invocation."""
+
+    query: str = Field(description="The user's request or question")
+    session_id: str = Field(default="default")
+    metadata: dict = Field(default_factory=dict)
+
+
+class AgentOutput(BaseModel):
+    """Typed output from an agent, with optional source attribution."""
+
+    answer: str
+    sources: list[Document] = Field(default_factory=list)
+    metadata: dict = Field(default_factory=dict)
