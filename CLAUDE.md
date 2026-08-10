@@ -140,60 +140,15 @@ When the user requests a session summary (or uses similar commands like "Generat
 
 ## Git Workflow
 
-### Commit cadence
-- Claude Code should suggest a commit after each complete logical task,
-  not after each modified file.
-- A "logical task" is: an implemented feature, a passing test, a fixed bug,
-  a finished refactor, a completed docs section.
-- When finishing a task, Claude should say: "This task is complete.
-  Suggested commit: `<proposed message>`. Shall I proceed?"
-- Claude NEVER commits automatically without user confirmation.
+Git conventions — commit format, cadence, branching strategy, pull requests
+and tags — live in `.claude/skills/git-workflow/SKILL.md`. Consult that skill
+before writing a commit message, creating a branch, or closing a roadmap
+version.
 
-### Commit message format
-Use Conventional Commits. Messages must be written in English.
+Two rules that always apply, regardless of the skill being loaded:
 
-   **Format:** `<type>(<scope>): <description>`
-
-   **Types:**
-   - `feat` — new feature or capability
-   - `fix` — bug fix
-   - `refactor` — code change that neither fixes a bug nor adds a feature
-   - `test` — adding or updating tests
-   - `docs` — documentation only
-   - `chore` — tooling, dependencies, CI, config
-   - `style` — formatting, whitespace (no logic change)
-   - `perf` — performance improvement
-
-   **Scopes** match the project's architectural layers and components.
-   Use lowercase, one word. Common scopes for agent projects:
-   `domain`, `application`, `infrastructure`, `llm`, `retrieval`, `memory`,
-   `api`, `agent`, `prompts`, `config`, `deps`, `ci`, `tests`, `docs`.
-
-   **Examples:**
-   feat(llm): add streaming support to provider
-   fix(retrieval): handle empty search results
-   refactor(agent): switch from inheritance to composition
-   test(domain): add unit tests for Protocol implementations
-   docs(architecture): add ADR for prompt loading decision
-   chore(deps): upgrade pydantic to v2.9
-
-### Commit body (optional)
-Use the body to explain **why**, not **what**. The diff already shows the what.
-Leave a blank line between the title and the body. Example:
-
-   ```
-   refactor(agent): switch from inheritance to composition
-
-   Base class was creating coupling between ResearchAgent and PQRSAgent
-   because streaming behavior differed. Composition via agent_utils.py
-   keeps each agent self-contained.
-   ```
-
-#### Commit cadence
-One commit per logical task, not per file. If you implement AnthropicLLM and its tests, that is ONE commit with both files, not two. If you implement the arXiv client and also fix a typo in the README, those are TWO separate commits (feat + docs). The rule: a commit should be revertable without breaking other things and must have a clear purpose.
-
-For a typical development session, aim for 3–6 commits per day. Fewer means commits are too large (hard to review); more means micro-commits that clutter the history.
-
-#### Two additional important rules
-1. Commit messages are written in English even if the project code has comments in Spanish. This is industry standard convention and keeps the repo professional.
-2. The commit body (optional, after the title) is used to explain the why, not the what. The diff already shows the what. If the decision is not obvious, explain it in the body.
+1. **Never commit without explicit user confirmation.** When a task is
+   complete, say: "This task is complete. Suggested commit:
+   `<proposed message>`. Shall I proceed?"
+2. Commit messages are written in English, even though code comments and
+   project docs may be in Spanish.

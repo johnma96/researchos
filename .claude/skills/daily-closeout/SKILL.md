@@ -144,7 +144,7 @@ recortar, reformular). No escribís en el archivo hasta tener OK claro.
 1. Insertá la entrada nueva en `docs/work_log.md` al final del archivo,
    respetando el formato de separadores.
 2. Preparás el mensaje de commit.
-   - Si el repo tiene `.claude/skills/git-commits/SKILL.md`, seguí sus
+   - Si el repo tiene `.claude/skills/git-workflow/SKILL.md`, seguí sus
      convenciones estrictamente.
    - Si no la tiene, usá Conventional Commits: `docs(work-log): update for
      YYYY-MM-DD`.
@@ -210,7 +210,7 @@ Esta skill funciona en cualquier repo con git y con al menos un
 2. Verificá si el nuevo proyecto tiene `docs/work_log.md` — si no, la skill
    ofrecerá crearlo en el primer uso.
 3. Opcional: si el nuevo proyecto tiene convenciones de commit distintas,
-   asegurate de tener también `.claude/skills/git-commits/SKILL.md` con esas
+   asegurate de tener también `.claude/skills/git-workflow/SKILL.md` con esas
    convenciones. Sin esa skill, `daily-closeout` cae al default Conventional
    Commits.
 
