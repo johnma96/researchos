@@ -167,3 +167,29 @@
   learnings.md ya quedaron interiorizados
 
 ---
+
+## 2026-08-10
+
+### Trabajo desarrollado
+- Implementado el adapter `TelegramBot` en `infrastructure/bot/telegram_bot.py`:
+  recibe `token` y una función `answer_fn: AnswerFn`
+  (`Callable[[str], Awaitable[str]]`) inyectada por constructor, sin conocer
+  `LLMProvider`, `VectorStore`, `AnthropicLLM` ni `ChromaVectorStore`
+- Composition root en `scripts/run_telegram_bot.py`: instancia `LocalEmbedder`,
+  `ChromaVectorStore`, `AnthropicLLM` y arma un closure que satisface `AnswerFn`
+  llamando a `rag_service.answer_query` (vector-only)
+- Detectado en pruebas manuales: el bot falla en preguntas de seguimiento
+  anafóricas — dos causas distintas identificadas: falta de memoria
+  conversacional (`answer_query` no recibe historial/`session_id`) y falta
+  de query rewriting antes del retrieval
+
+### Próximos pasos
+- Diseñar memoria conversacional vía el Protocol `MemoryStore` e inyectarla
+  en `answer_query`
+- Investigar query rewriting para resolver referencias anafóricas antes del
+  retrieval
+- Evaluar si conectar hybrid search al canal de Telegram (hoy es vector-only)
+- Manejar el límite de 4096 caracteres por mensaje de Telegram — el bot hoy
+  no trunca ni divide respuestas largas antes de `reply_text`
+
+---
