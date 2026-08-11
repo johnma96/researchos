@@ -62,6 +62,14 @@ def _reciprocal_rank(results: list[Document], source_paper: str) -> float:
     return 0.0
 
 
+async def _rerank(
+    query: str, chroma: ChromaVectorStore, bm25: BM25Retriever, llm: AnthropicLLM
+) -> list[Document]:
+    """Run hybrid search then rerank the top-10 with Claude."""
+    candidates = await hybrid_search(query, retrievers=[chroma, bm25], k=K * 2)
+    return await hybrid_rerank_search(query=query, llm=llm, documents=candidates, k=K)
+
+
 async def main() -> None:
     """Run the full evaluation loop and print a strategy comparison table."""
     with open(path_examples, encoding="utf-8") as f:
@@ -118,14 +126,6 @@ async def main() -> None:
         avg_p = sum(scores[name]) / len(scores[name])
         avg_mrr = sum(mrr[name]) / len(mrr[name])
         print(f"{name:<15} {avg_p:>6.3f}  {avg_mrr:>6.3f}")
-
-
-async def _rerank(
-    query: str, chroma: ChromaVectorStore, bm25: BM25Retriever, llm: AnthropicLLM
-) -> list[Document]:
-    """Run hybrid search then rerank the top-10 with Claude."""
-    candidates = await hybrid_search(query, retrievers=[chroma, bm25], k=10)
-    return await hybrid_rerank_search(query=query, llm=llm, documents=candidates, k=K)
 
 
 if __name__ == "__main__":
