@@ -193,3 +193,32 @@
   no trunca ni divide respuestas largas antes de `reply_text`
 
 ---
+
+## 2026-08-11
+
+### Trabajo desarrollado
+- `rag_service.answer_query` refactorizado: recibe `retrieve: RetrieveFn`
+  (`Callable[[str], Awaitable[list[Document]]]`) inyectado en vez de
+  `store: VectorStore`; compone directamente `retrieve(query)` →
+  `build_rag_messages(...)` → `llm.generate(...)` en lugar de llamar a
+  `retrieve_and_generate`
+- `scripts/run_telegram_bot.py` rearmado como composition root: construye
+  `ChromaVectorStore` y `BM25Retriever`, y un closure `retrieve_hybrid_rerank`
+  que encadena `hybrid_search` + `hybrid_rerank_search`; el bot ahora
+  responde con hybrid+rerank en vez de vector-only
+- `scripts/eval_retrieval.py`: `_rerank` movida antes de `main` para mejorar
+  legibilidad, y su `k` hardcodeado (`10`) reemplazado por `K * 2` (`152d651`)
+- `TelegramBot` no se modificó — el cambio de estrategia de retrieval quedó
+  completamente aislado del adaptador, validando el diseño de `AnswerFn`
+
+### Próximos pasos
+- Evaluar eliminación de `retrieve_and_generate` al construir el grafo de
+  V2 — sin llamadores en producción; al eliminar, actualizar también el
+  ejemplo del docstring de `agent_utils.py` (línea 18) y su test en
+  `tests/unit/application/test_agent_utils.py`
+- Arreglar `test_extract_text_pdf`: depende de un PDF no versionado
+  (`data/samples/sample_pdf.pdf` no está en git), falla en clon limpio
+- Manejar el límite de 4096 caracteres por mensaje de Telegram
+- Medir la latencia añadida por el paso de rerank
+
+---
