@@ -302,3 +302,49 @@ Regla simple para ResearchOS:
 - Guardé el retorno de `await update.message.reply_text(...)` en una variable sin usar.
 
 ---
+
+**Fecha:** 11/08/2026
+
+### ¿Qué aprendí?
+
+- **`RetrieveFn = Callable[[str], Awaitable[list[Document]]]` es el mismo patrón de ayer, una capa más abajo.** Ayer inyecté al bot una función que responde (`AnswerFn`); hoy inyecté al servicio una función que recupera. La simetría no es casual: cuando lo que necesito inyectar es *un solo comportamiento*, un tipo de función alcanza. Protocol o clase solo cuando son varios comportamientos que comparten estado.
+
+- **Por qué un parámetro tipo `strategy="hybrid"` habría sido peor.** La firma quedaría `answer_query(query, llm, store=None, retrievers=None, strategy="vector", top_k=5)`: dos parámetros opcionales que son *condicionalmente obligatorios* según el valor de un tercero. Puedo llamar `strategy="hybrid"` pasando solo `store` y compila perfecto — explota en runtime. El type checker no puede expresar "si strategy es hybrid, retrievers es obligatorio". Inyectar la función elimina el problema: la dependencia correcta ya está capturada en el closure.
+
+- **`retrieve_and_generate` es una composición de conveniencia, no el único camino.** Su paso 1 (`retrieve_context`) está soldado a búsqueda vectorial y exige un `store`. Cuando necesito otra estrategia no la parametrizo: armo mi propia composición con las mismas piezas primitivas — `retrieve(query)` → `build_rag_messages(...)` → `llm.generate(...)`. Por eso `build_rag_messages` está expuesta como función independiente y no escondida dentro de `retrieve_and_generate`.
+
+- **Este es el pago concreto de composición sobre herencia** (la pregunta 1.4 del taller que dejé en blanco). Con herencia tendría un `BaseRagAgent` con un método `retrieve()` que habría que sobrescribir, y cambiar de estrategia significaría crear una subclase. Con composición elijo otra función para ese paso. El costo de cambiar la estrategia bajó de "nueva clase" a "otra línea".
+
+- **Por qué NO modifiqué `retrieve_context`.** Tres razones: su firma recibe `store: VectorStore` mientras hybrid necesita `retrievers: list[Retriever]` (dependencias distintas); `hybrid_search` ya existe en `retrieval_service.py` y duplicarla en `agent_utils` pondría la misma lógica en dos lugares; y `retrieve_context` sigue siendo útil tal como está — si mañana quiero volver a vectorial puro, mi closure sería `retrieve_context(q, chroma, K)`. La pieza no muere, solo se mueve de ser llamada dentro del service a ser llamada en el composition root.
+
+- **Las dependencias se construyen una vez, al arrancar, no dentro del closure.** Mi primer intento construía `LocalEmbedder()` dentro de la función de recuperación. `LocalEmbedder` carga un modelo de sentence-transformers en memoria: se habría recargado en cada pregunta que llegara al bot. Eso es literalmente lo que significa "composition root" — el lugar donde se arma, no donde se usa.
+
+- **El patrón de dispatch ya existía en mi propio repo.** El dict `strategies` de `scripts/eval_retrieval.py` (línea 88) tiene cuatro lambdas que son, cada una, un `RetrieveFn`. Escribí cuatro instancias del tipo antes de nombrarlo. Si mañana quiero elegir estrategia por configuración, muevo ese dict al script y leo `settings.retrieval_strategy` — sin cadena de `if`.
+
+- **Pasar una función vs. llamarla.** `retrieve=retrieve_hybrid_rerank` pasa la función; `retrieve=retrieve_hybrid_rerank(query)` la ejecuta y pasa una corrutina. Los paréntesis significan "ejecuta ahora y dame el resultado". Cuando el parámetro se va a llamar más tarde (dentro de `answer_query`, dentro de `_handle_message`), va el nombre desnudo.
+
+- **El bot no se tocó.** El cambio de estrategia del motor no requirió ni una línea en `infrastructure/bot/telegram_bot.py`. Es la validación del diseño de ayer: el adaptador solo conoce `AnswerFn`, así que cambiar lo que hay detrás le es invisible.
+
+### ¿Qué no entendí bien / queda abierto?
+
+- No medí el costo de latencia del rerank. Ahora hay una llamada extra al LLM por cada pregunta, y eso es un trade-off real que introduje sin cuantificar.
+- No sé todavía si hybrid+rerank mejora las respuestas en la práctica. El eval actual tiene data leakage y da ~1.000 en las cuatro estrategias, así que no discrimina. Solo lo voy a saber con queries reales acumuladas del bot (V3).
+- Me costó ver que "reemplazar `retrieve_and_generate`" significaba escribir sus tres pasos, no llamarla con otros argumentos. Intenté tres veces reusarla antes de entender que su paso 1 era justo lo que quería cambiar.
+
+### Decisiones de diseño
+
+- `answer_query` recibe `retrieve: RetrieveFn` en lugar de `store: VectorStore`. `top_k` desaparece de la firma porque queda capturado en el closure.
+- Un solo closure hoy (hybrid+rerank), no las dos estrategias con un `if`. Construir un interruptor que nadie va a mover es generalización prematura. El dispatch por configuración se hará cuando haga falta alternar de verdad.
+- `retrieve_and_generate` se deja en su lugar aunque quedó sin llamadores en producción. Eliminarla hoy habría mezclado dos cambios en un commit. Se evalúa en V2, al construir el grafo, donde `retrieve` y `generate` se vuelven nodos separados.
+- Se acepta la latencia extra del rerank sin optimizar. Medirla primero, decidir después.
+
+### Errores interesantes
+
+- Escribí `RetrieveFn = Callable[[str]], Awaitable[list[Document]]` — corchetes mal cerrados. `Callable[[str]]` se cierra solo y la coma convierte todo en una **tupla** de dos elementos, no en un tipo de función. `Callable` recibe sus dos argumentos dentro de un solo par de corchetes.
+- Pasé `retrieve=retrieve_hybrid_rerank(query)` con paréntesis. Habría fallado con `TypeError: 'coroutine' object is not callable` más un `RuntimeWarning` de corrutina nunca esperada. Curioso: tres líneas abajo pasé `answer_fn=answer` correctamente, sin paréntesis.
+- Primer intento de los closures: sin parámetro `query` (no cumplían `Callable[[str], ...]`), construyendo el embedder adentro, y sin `return`.
+- Nombré mi closure `hybrid_search`, colisionando con el import de `retrieval_service`. El `def` local habría tapado el import.
+- Import de `SAMPLES_DIR` sin uso.
+- Tercer error mecánico de escritura de Python en una semana (los anteriores: `:` en vez de `=` en una asignación, `self` omitido en firmas de Protocol). No son conceptuales — es un hueco de automatismo que se cierra con repetición.
+
+---
