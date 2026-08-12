@@ -2,18 +2,23 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import fitz
 import pytest
 
 from researchos.application.services.ingestion_service import extract_text_pdf
 from researchos.domain.models import Paper
-from researchos.paths import SAMPLES_DIR
+
+
+def _fake_pdf_bytes() -> bytes:
+    """Build a minimal valid PDF in memory — no disk, no fixture file."""
+    doc = fitz.open()
+    doc.new_page().insert_text((72, 72), "Test PDF content")
+    return doc.tobytes()
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_extract_text_pdf():
-    local_pdf = SAMPLES_DIR / "sample_pdf.pdf"
-
     paper = Paper(
         source_id="1",
         source="arxiv",
@@ -26,7 +31,7 @@ async def test_extract_text_pdf():
     )
 
     mock_response = MagicMock()
-    mock_response.content = local_pdf.read_bytes()
+    mock_response.content = _fake_pdf_bytes()
     mock_response.raise_for_status = MagicMock()
 
     mock_client = MagicMock()
