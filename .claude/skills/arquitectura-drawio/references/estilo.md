@@ -103,19 +103,21 @@ rojo = orquestador/crítico, blanco = almacén de apoyo, amarillo = salida). Añ
 extra que apliquen (iconos sueltos = fuentes externas; flechas animadas = sentido del flujo).
 
 Dibújala en una franja al pie (dentro del `pageHeight`) con **edges de muestra reales** — mismo `style`
-que en el diagrama, con `sourcePoint`/`targetPoint` en la geometría en lugar de `source`/`target` — y
-**chips** de color usando el `fillColor`/`strokeColor` de cada arquetipo:
+que en el diagrama — y **chips** de color usando el `fillColor`/`strokeColor` de cada arquetipo:
 
+```python
+# Línea de muestra (sin nodos): usa Page.legend_edge(x1, x2, y, style) — NO Page.edge()
+p.legend_edge(960, 1005, 756, EDGE["data"])   # swatch verde = flujo de datos
+# Chip de color de caja: un node() normal con el estilo del arquetipo
+p.node("Paso determinista", 960, 780, 240, 38, STYLE["det"])
 ```
-# Línea de muestra (sin nodos): reutiliza el EDGE real, solo cambia los puntos
-<mxCell id="lg-e-green" style="edgeStyle=none;html=1;flowAnimation=1;strokeColor=#66CC00;strokeWidth=3;startArrow=none;endArrow=classic;" edge="1" parent="1">
-  <mxGeometry relative="1" as="geometry">
-    <mxPoint x="60" y="1080" as="sourcePoint"/><mxPoint x="104" y="1080" as="targetPoint"/>
-  </mxGeometry>
-</mxCell>
-# Chip de color de caja (usa el fillColor/strokeColor del arquetipo)
-rounded=1;arcSize=6;absoluteArcSize=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;
-```
+
+**Por qué `legend_edge` y no `edge`:** una muestra de flecha en la leyenda no conecta dos nodos reales,
+así que es un edge "flotante" — mxGraph exige que declare sus extremos con
+`<mxPoint as="sourcePoint">`/`<mxPoint as="targetPoint">` dentro de `mxGeometry`. Sin el atributo `as=`
+draw.io no sabe dónde dibujar el segmento y la muestra queda invisible (bug real detectado: el XML
+parseaba y el linter de traslapes no lo atrapaba, pero la línea no se veía en draw.io). `legend_edge`
+ya emite esos atributos — no construyas el `<mxPoint>` a mano.
 
 ## Claridad y anti-traslape (lo más importante para que se entienda)
 
