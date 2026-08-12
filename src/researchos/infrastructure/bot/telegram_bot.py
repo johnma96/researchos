@@ -45,7 +45,6 @@ class TelegramBot:
             await update.message.reply_text(chunk)
 
     def run(self) -> None:
-        print(self.token_telegram)
         app = ApplicationBuilder().token(self.token_telegram).build()
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message))
         app.run_polling()
