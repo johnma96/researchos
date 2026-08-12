@@ -83,18 +83,23 @@ respuesta.
 
 **Respuesta esperada:** El bot va en `infrastructure/bot/slack.py`. Flujo:
 (1) llega evento HTTP de Slack al webhook expuesto en el bot; (2) el bot
-extrae texto y contexto (user_id, channel_id); (3) el bot llama a
-`rag_service.answer_query(text=..., llm=..., store=...)` — llamada
-agnóstica al canal; (4) `rag_service` orquesta hybrid_search + rerank +
-generación; (5) devuelve el string; (6) el bot publica la respuesta en
-Slack usando el SDK. Motor no sabe que existe Slack.
+extrae texto y contexto (user_id, channel_id); (3) el bot llama a una
+función `answer_fn(query)` inyectada — típicamente un closure armado en el
+composition root que envuelve `rag_service.answer_query(query, llm,
+retrieve)`; (4) `answer_query` ejecuta `retrieve(query)` (hybrid+rerank u
+otra estrategia) y genera con el LLM; (5) devuelve el string; (6) el bot
+publica la respuesta en Slack usando el SDK. Motor no sabe que existe Slack.
 
 **Trampa común:** Meter el bot en `application/`. Los SDKs de Slack o
 Telegram son dependencias externas — pertenecen a infrastructure. El bot
 importa del motor, no al revés.
 
-**Ejemplo en el proyecto:** Planeado para V2 —
-`infrastructure/bot/telegram.py` seguirá el mismo patrón.
+**Ejemplo en el proyecto:** Implementado en V1 real —
+`infrastructure/bot/telegram_bot.py` (`TelegramBot(token, answer_fn)`, con
+`AnswerFn = Callable[[str], Awaitable[str]]`). El closure que satisface
+`answer_fn` se arma en `scripts/run_telegram_bot.py`, no en el bot. Un canal
+nuevo (Slack) seguiría exactamente el mismo patrón sin tocar
+`TelegramBot`.
 
 ---
 
@@ -107,7 +112,7 @@ deberías tocar y por qué?
 clase `QdrantVectorStore` que implementa el Protocol `VectorStore`;
 `tests/integration/test_qdrant.py`. Modificar: `config.py` para agregar
 la opción `Literal["chroma", "qdrant"]` en Settings; el composition root
-donde se instancia el store (scripts como `scripts/ingest_papers.py`).
+donde se instancia el store (scripts como `scripts/ingest_documents.py`).
 No tocar: nada en `domain/` (las abstracciones no cambian); nada en
 `application/services/*` (programan contra Protocols); ni los tests
 unitarios de application (los mocks de conftest.py siguen sirviendo).

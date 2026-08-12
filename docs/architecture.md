@@ -39,4 +39,17 @@
 
 ---
 
+## ADR-004: Function-type aliases for single-behavior dependencies
+
+**Date:** 2026-08
+**Status:** Accepted
+
+**Context:** `rag_service.answer_query` needed to depend on "something that answers" (for the Telegram adapter) and, one layer down, on "something that retrieves" (to swap vector-only, hybrid, and hybrid+rerank without touching the service). A `Protocol` is built for contracts with several named methods that share state; here each dependency is a single anonymous behavior — one parameter, one return. A `strategy="hybrid"` flag was also considered and rejected: it produces parameters that are conditionally required depending on another parameter's value, which a type checker cannot express, so a wrong combination only fails at runtime.
+
+**Decision:** Model single-behavior dependencies as `Callable` type aliases (`AnswerFn = Callable[[str], Awaitable[str]]`, `RetrieveFn = Callable[[str], Awaitable[list[Document]]]`) instead of a `Protocol` or a strategy flag. The concrete choice of implementation is captured as a closure built once in the composition root (`scripts/run_telegram_bot.py`) and passed down — the consuming code (`TelegramBot`, `answer_query`) only knows the function signature.
+
+**Consequences:** Lighter than a `Protocol` for the common case of one behavior, still statically checkable via the `Callable` signature. Swapping retrieval strategy (vector-only → hybrid+rerank) required zero changes to `TelegramBot` — only the closure built in the composition root changed. Rule going forward: one behavior → function-type alias; several related behaviors sharing state → `Protocol` or a class.
+
+---
+
 <!-- Add new ADRs below following this template -->
