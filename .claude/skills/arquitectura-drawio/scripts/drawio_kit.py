@@ -66,9 +66,8 @@ STYLE = {
     "user": "shape=mxgraph.ios7.icons.user;html=1;strokeColor=#0080F0;strokeWidth=2;"
     "verticalLabelPosition=bottom;verticalAlign=top;labelPosition=center;align=center;"
     f"fontColor={FONT};fontSize=11;",
-    "zone": f"""rounded=1;{ARC_ZONE}whiteSpace=wrap;html=1;fillColor=none;
-    strokeColor={BLUE};dashed=1;"""
-    f"verticalAlign=top;align=left;fontColor={BLUE};fontSize=13;fontStyle=1;"
+    "zone": f"rounded=1;{ARC_ZONE}whiteSpace=wrap;html=1;fillColor=none;strokeColor={BLUE};"
+    f"dashed=1;verticalAlign=top;align=left;fontColor={BLUE};fontSize=13;fontStyle=1;"
     "spacingLeft=12;spacingTop=6;",
     "note": "text;whiteSpace=wrap;html=1;fontColor=#9E9E9E;fontSize=11;align=left;",
     "caption": f"text;whiteSpace=wrap;html=1;fontColor={FONT};"
@@ -154,6 +153,22 @@ class Page:
         self.cells.append(
             f'<mxCell id="{cid}" value="{_esc(label)}" style="{escape(st)}" edge="1" '
             f'parent="1" source="{src}" target="{dst}">{geo}</mxCell>'
+        )
+        return cid
+
+    def legend_edge(self, x1: float, x2: float, y: float, style: str) -> str:
+        """Muestra de flecha para la leyenda: un edge SIN nodo origen/destino
+        (`source`/`target`). mxGraph exige que un edge flotante declare sus
+        extremos con `<mxPoint as="sourcePoint">`/`<mxPoint as="targetPoint">`;
+        sin ese atributo `as=`, draw.io no sabe dónde dibujar la línea y la
+        muestra no se ve (aunque el resto del diagrama sea válido)."""
+        cid = self._id("lge")
+        self.cells.append(
+            f'<mxCell id="{cid}" value="" style="{escape(style)}" edge="1" parent="1">'
+            f'<mxGeometry relative="1" as="geometry">'
+            f'<mxPoint x="{x1}" y="{y}" as="sourcePoint"/>'
+            f'<mxPoint x="{x2}" y="{y}" as="targetPoint"/>'
+            f"</mxGeometry></mxCell>"
         )
         return cid
 
