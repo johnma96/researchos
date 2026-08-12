@@ -22,7 +22,35 @@ Pasteles estándar de draw.io para categorizar cajas: azul `#dae8fc` (LLM/servic
 ## Tipografía y tamaños
 
 Fuente por defecto de draw.io. `fontSize` 12 en nodos, 15 en banners, 10–11 en detalles/almacenes.
-Tamaños de caja habituales: tarjeta **160×60** o **170×60**, almacén **≈190×44**, actor **48×60**.
+
+Tamaños medidos en los diagramas de referencia de la organización, que son el estándar a igualar:
+
+| Elemento | Tamaño | Etiqueta |
+|---|---|---|
+| Caja de componente | **~180×56** (mediana real 176–200 × 52–56) | **30–45 caracteres**, 2–3 líneas cortas |
+| Almacén (cilindro) | ≈170×44 | Nombre + una línea de detalle |
+| Actor | 48×60 | Dos palabras |
+| Zona / banda | ancho completo | Título corto alineado a la izquierda |
+
+**Cajas pequeñas y muchas, no pocas y grandes.** Una caja de 300×88 con cuatro líneas de prosa es
+media nota al pie disfrazada de componente: ocupa el espacio de tres cajas reales y obliga a bajar
+el número de nodos, que es justo lo que vuelve el diagrama incompleto para un lector técnico. Si el
+texto no cabe en 45 caracteres, el detalle va a la etiqueta de la flecha, a la zona que agrupa o a
+una nota al pie de la página. `check_layout` avisa cuando la mediana de la página se pasa.
+
+## El rojo se concentra, no se rocía
+
+El rojo (`STYLE["warn"]`, `#f8cecc`) marca deuda técnica o violación de capas. **Va agrupado en una
+zona rotulada** —«Deuda técnica», «Piezas sin implementar»— donde el lector lo interpreta como una
+sección del diagrama. Repartido sobre los pasos de un flujo produce el efecto contrario al buscado:
+si cuatro de los diez pasos de un pipeline salen en rojo, el sistema entero se lee como averiado
+cuando lo que está mal puede ser solo dónde viven unos imports.
+
+En un flujo, colorea cada paso por **lo que es** (su capa) y saca la deuda a una nota al pie o a una
+página aparte; marca en rojo únicamente el punto exacto de la violación. Y cuida que el texto de la
+leyenda cubra **todos** los usos que le das al color: si el rojo también señala «duplica el wiring»,
+la leyenda no puede decir solo «viola ADR-001». `check_layout` avisa si más del 25 % de las cajas de
+una página están en rojo fuera de una zona de deuda.
 
 ## Esquinas redondeadas fijas (dos niveles)
 
@@ -134,23 +162,70 @@ Reglas de diseño:
 - **Almacenes de apoyo** pegados **junto** al nodo que los consume (edge corto), no al otro extremo.
 - **Flechas que cruzarían un nodo** → usa `points=[(x,y),...]` en `edge()` para sacar la ruta por
   encima/alrededor (un carril libre), o reubica los nodos. No dejes una flecha atravesando un icono.
-- **Etiquetas de flecha** (`202`, `Post`): ponlas donde el tramo esté libre; si caen sobre un nodo,
+- **Etiquetas de flecha: el hueco manda.** Es el traslape más frecuente y el más invisible al
+  escribir el script. La etiqueta se dibuja en el punto medio del recorrido, o sea **dentro del hueco
+  entre las dos cajas que conecta**; si el hueco es más angosto que la etiqueta, esta se monta sobre
+  ambas. Regla operativa: **hueco ≥ 8 px × nº de caracteres de la etiqueta, + 20 px de aire.**
+  `search_papers(query)` son 20 caracteres → necesita ~180 px de separación, no 40. Si no tienes ese
+  espacio, tienes tres salidas y ninguna es dejarlo así: acortar la etiqueta, moverla a un tramo
+  vertical largo con un waypoint, o quitarla y llevar ese dato dentro de la caja destino.
+- **Etiquetas de flecha sobre otros nodos**: ponlas donde el tramo esté libre; si caen sobre un nodo,
   mueve el nodo o añade un waypoint para desplazar el punto medio.
 - **Contenedor/zona**: dibújalo primero (queda detrás), `fillColor=none`; el título va en una esquina
   (`align=left`), no centrado sobre el paso de las flechas.
+
+### Patrones de composición (resuelven el 90 % de los enredos)
+
+Antes de pelear con waypoints, prueba a cambiar la disposición. Estos patrones vienen de rehacer
+diagramas que habían quedado ilegibles:
+
+- **Serpentina para secuencias largas.** Si un flujo no cabe en una fila, no vuelvas al margen
+  izquierdo con una flecha de retorno gigante: alterna el sentido por fila (fila 1 →, fila 2 ←,
+  fila 3 →) y **baja de fila por la misma columna**, con un tramo vertical corto. Así ninguna
+  flecha retrocede ni cruza otra. Es lo que permite meter 12 pasos en una página sin un solo cruce.
+- **Pasos numerados** ① ② ③ en la etiqueta de cada caja. El lector sigue números, no flechas; y de
+  paso te libera de dibujar los retornos, que son la mitad del enredo en un diagrama de secuencia.
+- **Corredores reservados.** Deja carriles (verticales u horizontales) sin ningún nodo, y rutea por
+  ahí las flechas largas con `points=`. Un par de corredores en los márgenes convierte un ruteo
+  imposible en uno trivial. Reserva el carril **antes** de colocar los nodos, no después.
+- **Codifica la capa en el COLOR de la caja, no en bandas**, cuando la página es de flujo. Dibujar
+  bandas por capa *y* un flujo encima obliga a que cada paso cruce de banda: es la receta exacta
+  para que las etiquetas caigan sobre los títulos. Las bandas son para la vista estática; en la
+  dinámica, el color ya dice la capa y la leyenda lo traduce.
+- **Sustituye un haz N:M por una tabla.** Una relación aburrida y densa (qué implementa qué
+  contrato, qué servicio consume qué cola) son diez flechas cruzadas o una caja de texto con dos
+  columnas. Gana la caja: se lee mejor y no gasta presupuesto de flechas.
+- **Cuidado con las formas de etiqueta inferior** (cilindro `store`, actor `user`): su huella real
+  es la caja **más ~1.7× su ancho** de texto debajo. No las pongas de vecinas apretadas, no las uses
+  como chip de leyenda tal cual (el kit ya lo resuelve en `Page.legend`) y no rutees una flecha justo
+  por debajo.
 
 ### Verificar con el linter (obligatorio antes de entregar)
 
 `drawio_kit.write()` corre `check_layout` y avisa. Para el detalle:
 
 ```bash
-python scripts/check_layout.py <archivo>.drawio
+python scripts/check_layout.py docs/architecture.drawio
 ```
 
-Reporta **nodos-superpuestos**, **etiqueta-sobre-nodo**, **flecha-cruza-nodo** y
-**etiqueta-flecha-sobre-nodo**. Itera reubicando nodos / añadiendo waypoints hasta que no queden
-traslapes **duros** (nodos-superpuestos, flecha-cruza-nodo). Es heurístico (el ruteo real de draw.io
-difiere), así que confirma también visualmente en draw.io.
+Reporta ocho tipos de problema: **nodos-superpuestos**, **etiqueta-sobre-nodo**,
+**flecha-cruza-nodo**, **etiqueta-flecha-sobre-nodo**, **etiqueta-flecha-sobre-titulo-zona**,
+**etiquetas-flecha-encimadas**, **texto-desborda-caja** y **nodo-fuera-de-pagina**. Itera
+reubicando nodos / añadiendo waypoints hasta que no queden problemas **duros** (nodos-superpuestos,
+flecha-cruza-nodo, nodo-fuera-de-pagina, que hacen salir con código ≠ 0).
+
+Dos notas sobre por qué el linter mira lo que mira:
+
+- Las **zonas se excluyen** de los chequeos de cruce porque contienen nodos por diseño, pero su
+  **título** sí se comprueba: vive en una banda de ~26 px arriba y ahí es donde aterrizaban las
+  etiquetas de flecha (bug real: el título quedó como `infrastructure/ — SDK[Atom XML]erno`). Para
+  que esa detección funcione, dibuja las zonas con `Page.zone()`, que marca la celda como contenedor.
+- La posición de una etiqueta de flecha se estima **sobre la polilínea ruteada**, no en el punto
+  medio recto origen→destino: con waypoints, ambos puntos no tienen nada que ver.
+
+Sigue siendo heurístico (el ruteo real de draw.io difiere) y **no sustituye la revisión visual**:
+el linter no ve fuentes, ni iconos que no cargan, ni palabras pegadas. Confirma siempre con un
+export real (ver SKILL.md, sección de verificación).
 
 ## Etiquetas: pasar texto crudo (evitar doble escape)
 

@@ -7,23 +7,74 @@ React, Node, Python, TypeScript, Docker, Kubernetes, PostgreSQL, FastAPI, etc. L
 > **Regla:** para cada componente usa SIEMPRE el **logo oficial de la tecnología** que representa;
 > si no existe, cae al **glifo genérico**. Nunca inventes un icono ni dejes una caja vacía.
 
-## 1ª opción — logo oficial de la tecnología (recomendado)
+## Al generar: `icon()` — la regla completa en una llamada (recomendado)
 
-Punto de entrada único en `scripts/glyph.py`, sirve para cualquier tecnología:
+```python
+from glyph import icon
+
+p.node("Frontend React", x, y, w, h, STYLE["card"], icon=icon("react", "code"))
+p.node("PostgreSQL",     x, y, w, h, STYLE["card"], icon=icon("postgresql", "database"))
+p.node("Google ADK",     x, y, w, h, STYLE["llm"],  icon=icon("adk", "smart_toy"))
+p.node("Worker propio",  x, y, w, h, STYLE["card"], icon=icon("__worker__", "code"))
+```
+
+`icon(name, fallback, color)` intenta el **logo oficial** y, si esa tecnología no lo tiene, cae al
+**glifo genérico** `fallback`. Si no hay red devuelve `None` y el kit dibuja la caja sin icono, en
+vez de romper la generación. Para forzar el glifo sin intentar el logo, usa un `name` que no exista
+como marca (convención: `"__mi_componente__"`).
+
+> **No le pases `color` a un logo de marca salvo que quieras forzarlo.** El tercer argumento existe
+> para los glifos genéricos, donde el color codifica la categoría. En un logo, pasar color **apaga el
+> arte multicolor**: se salta devicon y tiñe la silueta de simple-icons de un solo tono.
+> `icon("python", "code")` da el logo azul-y-amarillo real; `icon("python", "code", "#3776AB")` da
+> una silueta plana azul.
+
+## Por qué un icono sale a color o en negro
+
+Los diagramas apagados casi siempre vienen de aquí: **simple-icons es monocromo por diseño**. Cada
+logo es un único `<path>` sin `fill`, así que renderiza NEGRO salvo que se le pase un color, y aun
+así queda plano. Es un set de siluetas de marca, no de logos a color.
+
+`logo()` prueba las fuentes en este orden, para que el color sea lo normal y el negro la excepción:
+
+| Orden | Fuente | Aspecto | Cobertura |
+|---|---|---|---|
+| 1 | **devicon** `original` | **Multicolor**, con degradados | Stack clásico: python, docker, postgresql, react, nodejs, kubernetes, fastapi, googlecloud… |
+| 2 | **gcp_icon** | **Multicolor** (arte oficial de Google) | Productos Google Cloud: vertex_ai, bigquery, cloud_run… |
+| 3 | **simple-icons + `brand_hex()`** | Monocromo, pero en el **color oficial de la marca** | ~3300 marcas: telegram `#26A5E4`, huggingface `#FFD21E`, pydantic `#E92063`… |
+
+El paso 3 solo queda oscuro cuando el color de marca **es** oscuro: Anthropic es `#191919`, así que
+su logo es casi negro por definición y está bien así.
+
+```bash
+python scripts/glyph.py logo python      # devicon multicolor
+python scripts/glyph.py logo telegram    # simple-icons teñido con su #26A5E4
+```
+
+**Peso:** el arte multicolor pesa entre 2 y 3 veces más que la silueta (python 1,6 → 3,1 KB; docker
+2,0 → 5,6 KB; postgresql 5,7 → 10,6 KB), porque lleva varios `path` y a veces degradados. Teñir un
+simple-icons no cuesta nada (+25 bytes). En un diagrama normal la diferencia son unas decenas de KB,
+muy lejos del límite de 500 KB; si alguna vez aprieta, la palanca es reducir iconos repetidos, no
+volver al monocromo.
+
+## 1ª opción por dentro — logo oficial de la tecnología
+
+Si quieres controlar el fallo tú mismo:
 
 ```python
 from glyph import logo
 p.node("LangChain service", x, y, w, h, istyle(logo("langchain")))
-p.node("Frontend React",    x, y, w, h, istyle(logo("react", "#61DAFB")))
+p.node("Frontend React",    x, y, w, h, istyle(logo("react")))   # multicolor
 p.node("PostgreSQL",        x, y, w, h, istyle(logo("postgresql")))
 p.node("Vertex AI",         x, y, w, h, istyle(logo("vertex_ai")))   # cae a producto GCP
 ```
 
-`logo(name, color)` prueba, en orden: **marca** (simple-icons, ~3000 logos oficiales) y luego
-**producto Google Cloud** (`gcp_icon`). Si ninguno tiene el logo, lanza un error que te guía al
-glifo genérico (no inventa iconos). `color` es opcional (respeta el color de marca).
+`logo(name, color)` prueba las tres fuentes de la tabla de arriba en orden, priorizando el arte a
+color. Si ninguna tiene el logo, lanza un error que te guía al glifo genérico (no inventa iconos).
+`color` es opcional y, si lo pasas, **salta devicon** y tiñe la silueta de simple-icons: úsalo solo
+cuando quieras un color concreto por encima del arte de marca.
 
-- Slugs de marca típicos: `langchain`, `react`, `nodejs`, `typescript`, `python`, `docker`,
+- Slugs típicos (sirven igual en devicon y simple-icons): `langchain`, `react`, `nodejs`, `typescript`, `python`, `docker`,
   `kubernetes`, `fastapi`, `postgresql`, `redis`, `awslambda`, `amazonsqs`, `microsoftazure`,
   `apache`, `openai`, `huggingface`. Catálogo completo: <https://simpleicons.org>.
 - Productos GCP: `vertex_ai`, `bigquery`, `cloud_run`, `cloud_storage`, `cloud_vision_api`,
