@@ -42,8 +42,12 @@ ARC_ZONE = "arcSize=6;absoluteArcSize=2;"
 
 # --- Arquetipos de nodo (copiar-pegar tal cual en draw.io con Ctrl+E) ---------
 STYLE = {
+    # `kitRole=banner` (como `kitRole=zone`) es un marcador propio que draw.io ignora y que
+    # permite a check_layout saber que esta caja no es un componente, así no la mide contra
+    # el estándar de tamaño de la casa.
     "banner": "rounded=0;whiteSpace=wrap;html=1;fillColor=#4DA1F5;strokeColor=none;"
-    "shadow=1;fontColor=#ffffff;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;",
+    "shadow=1;fontColor=#ffffff;fontSize=15;fontStyle=1;align=center;verticalAlign=middle;"
+    "kitRole=banner;",
     "card": f"rounded=1;{ARC}whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dddddd;"
     f"shadow=1;strokeWidth=1;fontColor={FONT};fontSize=12;",
     "llm": f"rounded=1;{ARC}whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;"
@@ -66,9 +70,13 @@ STYLE = {
     "user": "shape=mxgraph.ios7.icons.user;html=1;strokeColor=#0080F0;strokeWidth=2;"
     "verticalLabelPosition=bottom;verticalAlign=top;labelPosition=center;align=center;"
     f"fontColor={FONT};fontSize=11;",
+    # `kitRole=zone` es un marcador propio: draw.io ignora las claves de estilo que no
+    # conoce, y a cambio check_layout puede identificar los contenedores sin adivinar por
+    # heurística (antes: "punteado + sin relleno" — que también matchea una anotación
+    # punteada cualquiera y la excluía en silencio de todos los chequeos).
     "zone": f"rounded=1;{ARC_ZONE}whiteSpace=wrap;html=1;fillColor=none;strokeColor={BLUE};"
     f"dashed=1;verticalAlign=top;align=left;fontColor={BLUE};fontSize=13;fontStyle=1;"
-    "spacingLeft=12;spacingTop=6;",
+    "spacingLeft=12;spacingTop=6;kitRole=zone;",
     "note": "text;whiteSpace=wrap;html=1;fontColor=#9E9E9E;fontSize=11;align=left;",
     "caption": f"text;whiteSpace=wrap;html=1;fontColor={FONT};"
     "fontSize=11;align=center;fontStyle=1;",
@@ -99,9 +107,11 @@ def _esc(text: str) -> str:
 class Page:
     """Una página (<diagram>) del archivo. No instanciar directo: usar Diagram.page()."""
 
-    def __init__(self, name: str, prefix: str) -> None:
+    def __init__(self, name: str, prefix: str, width: int = 1654, height: int = 1169) -> None:
         self.name = name
         self.prefix = prefix
+        self.width = width
+        self.height = height
         self.cells: list[str] = []
         self._n = 0
 
@@ -128,6 +138,52 @@ class Page:
                 f'height="22" as="geometry"/></mxCell>'
             )
         return cid
+
+    def zone(self, title, x, y, w, h) -> str:
+        """Contenedor/banda (recuadro azul punteado con el título arriba a la izquierda).
+
+        Dibújalo ANTES que su contenido para que quede detrás. Usa siempre este método en
+        vez de `node(..., STYLE["zone"])`: marca la celda como contenedor para el linter."""
+        return self.node(title, x, y, w, h, STYLE["zone"])
+
+    def banner(self, title: str, subtitle: str = "", x=40, y=20, w=1574) -> None:
+        """Cabecera de página: barra azul con el título y, debajo, una línea de contexto.
+
+        El subtítulo es donde se dice para qué sirve la página y a qué otras remite — en
+        un diagrama multipágina es lo que evita que el lector crea que está viendo el todo."""
+        self.node(title, x, y, w, 36, STYLE["banner"])
+        if subtitle:
+            self.node(subtitle, x, y + 38, w, 20, STYLE["note"] + "spacingLeft=2;")
+
+    def legend(self, y, edges, chips, nota="", x=40, edge_col=450, chip_col=620) -> None:
+        """Leyenda obligatoria (ver SKILL.md): muestras de flecha REALES + chips de caja.
+
+        `edges` es [(EDGE[...], "qué significa ese color"), ...] y `chips`
+        [(STYLE[...], "qué tipo de componente es"), ...]. Las muestras se dibujan con el
+        mismo `style` del diagrama para que color y animación coincidan de verdad.
+
+        Devuelve None; comprueba con check_layout que la franja entre en el pageHeight."""
+        self.node("Leyenda", x, y, 200, 22, STYLE["caption"] + "align=left;")
+        for i, (edge_style, texto) in enumerate(edges):
+            yy = y + 34 + i * 32
+            self.legend_edge(x + 20, x + 88, yy + 11, edge_style)
+            self.node(texto, x + 102, yy, edge_col, 22, STYLE["note"])
+        for i, (chip_style, texto) in enumerate(chips):
+            xx = chip_col + (i % 3) * 340
+            yy = y + 32 + (i // 3) * 62
+            # `kitRole=legend`: los chips reutilizan el estilo de cada arquetipo, así que sin
+            # marcarlos check_layout los mediría como si fueran componentes del diagrama.
+            chip = chip_style + "kitRole=legend;"
+            if "cylinder" in chip_style or "verticalLabelPosition=bottom" in chip_style:
+                # Estas formas llevan la etiqueta DEBAJO y su huella real es ~1.7x el ancho:
+                # como chip invadirían al vecino. Se dibujan pequeñas y mudas, con el texto al lado.
+                self.node("", xx, yy + 6, 66, 34, chip)
+                self.node(texto, xx + 78, yy, 222, 46, STYLE["note"] + "verticalAlign=middle;")
+            else:
+                self.node(texto, xx, yy, 300, 46, chip)
+        if nota:
+            filas = (len(chips) - 1) // 3 + 1 if chips else 0
+            self.node(nota, chip_col, y + 32 + filas * 62 + 20, 980, 56, STYLE["note"])
 
     def edge(
         self, src, dst, style=EDGE["flow"], label="", exit=None, entry=None, points=None
@@ -178,7 +234,7 @@ class Page:
             f'<diagram id="{escape(self.prefix)}" name="{escape(self.name)}">'
             f'<mxGraphModel dx="1400" dy="850" grid="1" gridSize="10" guides="1" '
             f'tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" '
-            f'pageWidth="1654" pageHeight="1169" math="0" shadow="0">'
+            f'pageWidth="{self.width}" pageHeight="{self.height}" math="0" shadow="0">'
             f'<root><mxCell id="0"/><mxCell id="1" parent="0"/>{body}</root>'
             f"</mxGraphModel></diagram>"
         )
@@ -190,8 +246,12 @@ class Diagram:
     def __init__(self) -> None:
         self.pages: list[Page] = []
 
-    def page(self, name: str) -> Page:
-        p = Page(name, f"p{len(self.pages) + 1}")
+    def page(self, name: str, width: int = 1654, height: int = 1169) -> Page:
+        """Crea una página. El tamaño por defecto es A3 apaisado a 96 dpi (1654x1169),
+        que es lo que cabe legible en pantalla; súbelo solo si el contenido lo pide de
+        verdad — un lienzo más grande suele ser síntoma de que faltaba partir en páginas
+        (ver el criterio de partición en SKILL.md)."""
+        p = Page(name, f"p{len(self.pages) + 1}", width, height)
         self.pages.append(p)
         return p
 
