@@ -18,7 +18,9 @@ def _fake_pdf_bytes() -> bytes:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_extract_text_pdf():
+async def test_extract_text_pdf(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("researchos.application.services.ingestion_service.PAPERS_DIR", tmp_path)
+
     paper = Paper(
         source_id="1",
         source="arxiv",

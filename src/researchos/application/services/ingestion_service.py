@@ -74,6 +74,7 @@ async def _download_pdf(paper: Paper) -> Path:
         response = await client.get(url)
         response.raise_for_status()
         # save pdf in local system
+        local_pdf_path.parent.mkdir(parents=True, exist_ok=True)
         with open(local_pdf_path, "wb") as f:
             f.write(response.content)
 
