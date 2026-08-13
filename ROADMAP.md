@@ -27,10 +27,15 @@
 - [x] T11: Bot de Telegram como adapter (`infrastructure/bot/telegram_bot.py`, `AnswerFn` inyectado, completado 10 ago)
 - [x] T12: Composition root `scripts/run_telegram_bot.py` con wiring hybrid+rerank (completado 11 ago)
 - [x] T13: `answer_query` inyecta `retrieve: RetrieveFn` en vez de `store: VectorStore` (completado 11 ago)
-- [x] T14: Fix — `test_extract_text_pdf` sin depender de un PDF no versionado (completado 12 ago)
+- [x] T14: Fix — `test_extract_text_pdf` sin depender de un PDF no versionado
+      (marcado completado 12 ago, pero **no lo estaba**: seguía fallando en
+      clon limpio porque `_download_pdf` escribía a `data/papers/` sin crear
+      el directorio, y el test escribía sobre el `data/papers/` real del
+      repo. Corregido de verdad y verificado en un clon limpio real —
+      completado 13 ago)
 - [x] T15: Fix — límite de 4096 caracteres por mensaje de Telegram (completado 12 ago)
 - [x] T16: `scripts/ingest_documents.py` implementado — CLI delgado sobre `ingest_papers` (completado 12 ago)
-- [ ] T17: Merge de la rama de V1 real a `main`
+- [x] T17: Merge de la rama de V1 real a `main` (completado 13 ago, PR#4)
 
 ## Deuda técnica conocida
 - [ ] `ingestion_service.py` (`application/`) importa `httpx`, `fitz` y
