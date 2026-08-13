@@ -222,3 +222,40 @@
 - Medir la latencia añadida por el paso de rerank
 
 ---
+
+## 2026-08-12
+
+### Trabajo desarrollado
+- Fix `test_extract_text_pdf`: PDF simulado en memoria vía `fitz` en vez de
+  leer `data/samples/sample_pdf.pdf` (no versionado) — ya no falla en clon
+  limpio
+- Fix límite de 4096 caracteres de Telegram: `_split_message()` en
+  `telegram_bot.py` parte respuestas largas y las envía en secuencia
+- `scripts/ingest_documents.py` implementado: CLI delgado (`argparse` +
+  `ensure_dirs()` + `asyncio.run`) sobre `ingest_papers()` — quedó de stub
+  desde V1 semana 1-2
+- `ROADMAP.md` reestructurado con las ventanas de fecha del plan v3.0;
+  T11-T16 marcados completos; deuda técnica de `ingestion_service.py`
+  (imports de infra a nivel de módulo) registrada
+- `docs/architecture.md`: ADR-004 documentando el patrón
+  `AnswerFn`/`RetrieveFn`; corregidos ejemplos obsoletos del banco de
+  preguntas (CA-004, CA-005)
+- Diagrama de arquitectura de V1 (`docs/architecture.drawio`, tres vistas)
+  y expansión de la skill `arquitectura-drawio` (linter de 4 a 11 checks,
+  `legend_edge`, `check_labels.py`) — trabajo de un segundo agente sobre
+  la misma rama
+- Fix `telegram_bot.py`: dejó de imprimirse el token de Telegram al
+  arrancar
+- Incidente de git resuelto: un rebase para corregir el email de autor se
+  aplicó sobre un commit huérfano, reescribiendo los 75 commits del
+  historial sin ancestro común con `main`. Se recuperó el estado bueno vía
+  reflog y se reescribió el email real de forma controlada con
+  `git filter-repo` (mailmap, solo los correos empresariales → gmail),
+  verificando hashes de árbol idénticos antes/después
+
+### Próximos pasos
+- Merge manual de `fix/clean-clone-and-message-limit` a `main`
+- Re-apuntar el tag `v1.0.0` al nuevo commit de merge
+- V1 real cerrada tras el merge — arrancar V2 (T18: LangGraph fundamentals)
+
+---
