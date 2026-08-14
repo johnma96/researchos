@@ -152,3 +152,19 @@ Two rules that always apply, regardless of the skill being loaded:
    `<proposed message>`. Shall I proceed?"
 2. Commit messages are written in English, even though code comments and
    project docs may be in Spanish.
+
+
+---
+
+## Weekly Work Cycle (GitHub Project)
+
+Given that the repo already has a Project and associated Issues on GitHub, the weekly workflow is as follows:
+
+- Monday. Choose the issue for the week, move it to “In Progress” in the Project, and enter an estimate (h). Create a branch with a name matching the issue.
+
+- Monday through Thursday. Make commits referencing the issue with (#N). Acceptance criteria are checked off as they’re met—this gives you visible progress without having to write reports.
+Upon closing. Create a pull request with “Closes #N” in the description; merge it, and the issue closes automatically, advancing the milestone bar. Enter the Actual (h).
+
+- Friday. The closed issues from the week serve as input for generating the question bank. The “interview-bank” skill reads the git log; if the commits reference issues, the context it receives is richer.
+
+And the metric that really matters in the long run isn’t the milestone bar: it’s the ratio of Estimate to cumulative Actual. In three months, you’ll know whether you systematically underestimate infrastructure work, refactoring, or integration with external APIs. That data stays with you for the rest of your career, and almost no one has it because almost no one measures it.
