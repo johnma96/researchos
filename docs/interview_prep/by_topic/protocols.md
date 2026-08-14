@@ -1,6 +1,6 @@
 # Protocols — banco de preguntas
 
-3 preguntas. Fuente: `docs/interview_prep/bank.md`.
+4 preguntas. Fuente: `docs/interview_prep/bank.md`.
 
 #### [PR-001] Nivel: básico
 **Pregunta:** ¿Qué es un `Protocol` de Python y en qué se diferencia de
@@ -41,9 +41,10 @@ su código.
 "rigor" adicional de ABC (enforcement al instanciar) es innecesario si
 usás mypy en CI — y a cambio pagás con acoplamiento por herencia.
 
-**Ejemplo en el proyecto:** `application/services/rag_service.py` recibe
-`llm: LLMProvider` y `store: VectorStore` — no sabe si son AnthropicLLM,
-GeminiLLM, ChromaVectorStore o mocks; solo sabe qué métodos puede llamar.
+**Ejemplo en el proyecto:** `application/services/ingestion_service.py`
+recibe `store: VectorStore | None` — no sabe si es `ChromaVectorStore` o un
+mock; solo sabe qué métodos puede llamar. (`rag_service.answer_query` ya no
+recibe `store` directamente — inyecta `retrieve: RetrieveFn`, ver PR-004.)
 
 ---
 
@@ -66,3 +67,29 @@ señal de mypy sobre si tu test está usando el Protocol correctamente.
 
 **Ejemplo en el proyecto:** `tests/conftest.py` tiene `MockVectorStore` y
 mocks de LLMProvider usados en `tests/unit/application/`.
+
+---
+
+#### [PR-004] Nivel: intermedio
+**Pregunta:** `rag_service.answer_query` recibe `retrieve: RetrieveFn`, un
+alias `Callable[[str], Awaitable[list[Document]]]`, en vez de un Protocol.
+¿Por qué no un Protocol acá, si ya se usa `VectorStore` y `LLMProvider` en
+el resto del proyecto?
+
+**Respuesta esperada:** Un Protocol tiene sentido cuando hay varios métodos
+relacionados que comparten estado (`VectorStore` con `search` + `upsert`).
+Acá la dependencia es un solo comportamiento anónimo — un parámetro, un
+retorno — y envolver eso en una clase con un único método es ceremonia sin
+beneficio. El alias de función sigue siendo estáticamente verificable
+(mypy valida la firma) pero es más liviano. Regla: un comportamiento →
+alias de función; varios comportamientos relacionados → Protocol o clase.
+
+**Trampa común:** Pensar que "más formal siempre es mejor" y usar Protocol
+por defecto. La complejidad debe ser proporcional al número de
+comportamientos que la dependencia agrupa, no una preferencia estilística
+fija.
+
+**Ejemplo en el proyecto:**
+`src/researchos/application/services/rag_service.py:8` —
+`RetrieveFn = Callable[[str], Awaitable[list[Document]]]`; documentado en
+ADR-004 de `docs/architecture.md`.
