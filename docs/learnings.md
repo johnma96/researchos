@@ -348,3 +348,63 @@ Regla simple para ResearchOS:
 - Tercer error mecánico de escritura de Python en una semana (los anteriores: `:` en vez de `=` en una asignación, `self` omitido en firmas de Protocol). No son conceptuales — es un hueco de automatismo que se cierra con repetición.
 
 ---
+
+**Fecha:** 13/08/2026
+
+### ¿Qué aprendí?
+
+- **La razón de ser de un grafo no es el estado — es poder volver atrás.** Le
+  pregunté a mi tutor qué gana un grafo sobre mi pipeline lineal
+  (`retrieve → generate`) y mi primera respuesta se quedó en el estado
+  explícito. La corrección: el estado es el *mecanismo* que hace que un ciclo
+  signifique algo (sin estado compartido, una iteración no puede acumular lo
+  que aprendió la anterior), pero el *fin* es poder bifurcar (conditional
+  edge — ir a arXiv si la recuperación local trajo poco, ir directo a
+  generar si trajo suficiente, mi T19) y poder ciclar (volver a un nodo
+  anterior — recuperar, evaluar que es malo, reescribir la query, recuperar
+  de nuevo, mi T22). Una cadena de funciones no puede hacer ninguna de las
+  dos: va en una sola dirección.
+- **"No puedo conocer el estado intermedio" es falso — es incompleto.** Dije
+  que con mi pipeline lineal no podía saber qué pasó en cada paso. Sí puedo:
+  un `logger.debug` después del retrieval, o devolver los documentos junto
+  con la respuesta. La diferencia real no es posible-vs-imposible, es
+  construcción-vs-instrumentación: en un grafo la inspeccionabilidad viene
+  gratis porque cada nodo ya es una unidad nombrada con entrada y salida
+  declaradas — cuando conecte Langfuse en V3 no voy a instrumentar nada, las
+  trazas van a salir solas de la estructura. Con funciones encadenadas, cada
+  punto de observación lo tengo que agregar yo, y se me puede olvidar.
+- **Tampoco es cierto que el grafo me dé el resultado final antes.** También
+  hay que ejecutarlo completo para tener la respuesta. Lo que cambia no es
+  *cuándo* conozco el final, es que conozco los pasos intermedios sin
+  esfuerzo extra.
+- **Para mi pipeline de hoy (dos pasos, sin ramas ni ciclos), LangGraph es
+  sobrecosto puro.** Un DAG lineal de dos nodos no necesita un grafo — para
+  eso alcanza encadenar dos funciones. La justificación de T18 no está en
+  T18 mismo: está en que T19 (rama condicional) y T22 (ciclo de reescritura
+  de query) no se pueden construir sin el grafo ya montado. Es
+  infraestructura que se paga adelante, no un beneficio inmediato.
+- **LangGraph es orquestación de bajo nivel; LangChain es construcción de
+  agentes de alto nivel** (modelos + tools ya integrados, con
+  `create_agent`). El cambio de LangGraph 0.x a 1.x deprecó
+  `create_react_agent` en favor de ese `create_agent` de LangChain, que por
+  debajo se apoya en LangGraph para control de flujo, human-in-the-loop y
+  persistencia de estado.
+- **El human-in-the-loop depende de que el estado sea explícito y
+  persistente.** Si el flujo fuera una cadena de llamadas continua, un
+  humano solo se entera del resultado al final (ej. un correo ya borrado
+  por error, marcado incorrectamente como spam). Con estado explícito y una
+  interrupción que lo persiste, el flujo se puede pausar, un humano corrige
+  el estado ("este correo no es spam"), y el agente continúa desde ahí sin
+  perder lo ya hecho ni reiniciar el proceso completo.
+- Versiones fijadas hoy para arrancar V2: `langgraph==1.2.11`,
+  `langchain==1.3.15`, `langchain-anthropic==1.5.6`,
+  `langgraph-checkpoint==4.2.0`.
+
+### ¿Qué no entendí bien?
+
+- El mecanismo concreto de una interrupción de LangGraph que persista el
+  estado para que un humano intervenga y el flujo continúe después — sé que
+  existe (`AgentState`/`AgentStatePydantic` y objetos de human-in-the-loop
+  cambiaron en la migración 0.x → 1.x) pero no verifiqué la API real todavía.
+
+---

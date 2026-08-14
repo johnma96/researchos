@@ -259,3 +259,31 @@
 - V1 real cerrada tras el merge — arrancar V2 (T18: LangGraph fundamentals)
 
 ---
+
+## 2026-08-13
+
+### Trabajo desarrollado
+- Fix real de T14: `_download_pdf` crea el directorio padre antes de escribir
+  (`ingestion_service.py`), y `test_extract_text_pdf` parcha `PAPERS_DIR` a
+  `tmp_path` para no ensuciar el repo — verificado en un clon fresco real,
+  no solo en el working copy (`9491967`, merge PR#5)
+- `ROADMAP.md` corregido: T14 tenía fecha de cierre falsa (12/08), quedó con
+  la fecha real (13/08) y la nota de qué faltaba; T17 (merge a `main`) marcado
+- Tag `v1.0.0` re-apuntado al commit de merge de PR#5 — V1 real cerrada
+- Tracking de V2 configurado en GitHub: 11 labels, milestone "V2 — Agente
+  LangGraph + Briefing matutino" (vence 02/10), `.github/ISSUE_TEMPLATE/task.md`,
+  y los 7 issues T18–T24 con estimaciones, dependencias y labels
+- Estudio de LangGraph: notebook de práctica, dependencias agregadas
+  (`langgraph`, `langchain`, `langchain-anthropic`), y entrada en
+  `learnings.md` sobre por qué un grafo aporta (bifurcaciones y ciclos, no
+  el estado) — corregida una confusión conceptual real en la conversación
+  con el tutor
+- `CLAUDE.md` actualizado con el ciclo semanal de trabajo vía GitHub Project
+
+### Próximos pasos
+- Abrir PR y mergear `docs/v2-github-tracking` a `main`
+- Arrancar T18 (LangGraph fundamentals) el lunes 17/08
+- Mañana (14/08, viernes): agregar la pregunta de grafo-vs-pipeline al banco
+  de preguntas en el ritual normal
+
+---
