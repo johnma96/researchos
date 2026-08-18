@@ -287,3 +287,44 @@
   de preguntas en el ritual normal
 
 ---
+
+## 2026-08-18
+
+### Trabajo desarrollado
+- `scripts/run_telegram_bot.py`: agregado `with_logging(answer_fn) -> AnswerFn`,
+  un wrapper que registra cada query entrante en `data/raw/queries.jsonl`
+  (timestamp UTC + texto) — insumo real para T24 (eval V1 vs V2 sin data
+  leakage). Corregida de paso la duplicación de `AnswerFn`: ahora se importa
+  de `telegram_bot.py` en vez de redefinirse
+- `mypy` conectado a `make lint` — ya estaba como dependencia dev y con
+  config básica desde antes, pero nunca se ejecutaba. Corrida completa: 38
+  errores encontrados; arreglados los de configuración/ruido (`rank_bm25` y
+  `fitz` sin stubs de tipos) y dos `var-annotated` en `retrieval_service.py`;
+  quedan 34 errores reales (gaps de manejo de `None` en 6 archivos) sin
+  tocar, a la espera de decidir alcance
+- `make run-bot` corregido: apuntaba a un módulo inexistente
+  (`researchos.infrastructure.bot.main`); ahora corre el script real
+  (`scripts/run_telegram_bot.py`)
+- Verificado manualmente que el bot arranca sin errores con el wrapper de
+  logging activo: `data/raw/queries.jsonl` se crea al construir
+  `with_logging`, embedder/Chroma/BM25 se construyen sin fallas. Falta
+  confirmar con un mensaje real desde Telegram
+- `notebooks/201-jmmz-langraph-study.ipynb`: práctica de `StateGraph` —
+  nodos, edges fijos y condicionales, ciclos (verificado quitando y
+  reordenando edges), reducers, y esquemas de estado separados
+  (`InputState`/`OutputState`/`PrivateState`)
+- `docs/learnings.md`: entrada de hoy documenta el patrón wrapper/decorador
+  (con ejemplo propio del taller de retorno) y los conceptos de estado,
+  nodo y edge de LangGraph con evidencia de los experimentos del notebook 201
+
+### Próximos pasos
+- Decidir qué hacer con los 34 errores de mypy restantes (`arxiv.py`,
+  `telegram_bot.py`, `anthropic_llm.py`, `chroma.py`, `embedder.py`,
+  `ingestion_service.py`) — arreglar ahora, un subconjunto, o registrar
+  como deuda en `ROADMAP.md`
+- Confirmar el logging de queries con un mensaje real por Telegram
+- Arrancar T18 (LangGraph fundamentals) con el borrador de estado ya
+  escrito en el notebook 201 (`query`, `documents`, `answer`, `messages`,
+  `rewritten_query`)
+
+---
