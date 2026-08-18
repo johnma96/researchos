@@ -15,8 +15,9 @@ test: ## Run unit tests only (fast, no IO)
 test-all: ## Run all tests (unit + integration)
 	uv run pytest -v
 
-lint: ## Run linter (ruff check)
+lint: ## Run linter (ruff check + mypy)
 	uv run ruff check src/ tests/
+	uv run mypy src/
 
 format: ## Format code (ruff format + fix)
 	uv run ruff format src/ tests/
@@ -37,7 +38,7 @@ run-api: ## Start the FastAPI server
 	uv run uvicorn researchos.infrastructure.api.main:app --reload --port 8000
 
 run-bot: ## Start the Telegram bot
-	uv run python -m researchos.infrastructure.bot.main
+	uv run python scripts/run_telegram_bot.py
 
 # ── Docker ──
 docker-up: ## Start local stack (api + chroma)

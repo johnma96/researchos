@@ -408,3 +408,97 @@ Regla simple para ResearchOS:
   cambiaron en la migración 0.x → 1.x) pero no verifiqué la API real todavía.
 
 ---
+
+**Fecha:** 18/08/2026
+
+### ¿Qué aprendí?
+
+- **Un wrapper es una función de orden superior: recibe una función y
+  devuelve otra función.** Lo practiqué primero en
+  `taller_retorno_researchos.ipynb` con `with_exclamation(fn)`, que define
+  `wrapped(text)` cerrando sobre `fn` y devuelve `wrapped` sin ejecutarlo.
+  Es el mismo molde que `with_logging(answer_fn: AnswerFn) -> AnswerFn` en
+  `scripts/run_telegram_bot.py`: recibe un `AnswerFn`, devuelve otro.
+- **Lo que importa no es que envuelva, sino cuándo corre cada parte.** En el
+  segundo experimento del notebook, `print("CONSTRUYENDO")` corre una sola
+  vez -- cuando se llama `with_exclamation(greet)` -- y `print("EJECUTANDO")`
+  corre una vez por cada llamada a la función envuelta. Esa separación
+  construcción-una-vez / ejecución-por-llamada es exactamente por qué
+  `with_logging` puede abrir el `logging.FileHandler` y hacer
+  `query_logger.addHandler(...)` en el cuerpo de la función envolvente: ese
+  código corre una sola vez, al armar `with_logging(answer)` en el
+  composition root, no en cada pregunta que llega por Telegram.
+- **El wrapper no necesita saber nada de Telegram.** `with_logging` solo
+  conoce la firma `AnswerFn` (`Callable[[str], Awaitable[str]]`) — le es
+  indiferente si la función que envuelve viene de `answer_query` con
+  vector-only o con hybrid+rerank. Mismo patrón de composition root que ya
+  veníamos usando (`retrieve_hybrid_rerank`), aplicado ahora para agregar un
+  efecto secundario (logging) en vez de una estrategia de recuperación.
+
+**LangGraph: estado, nodo y edge, con evidencia de mis propios experimentos**
+
+- **Estado.** Es la estructura de datos explícita (`TypedDict`, `dataclass` o
+  modelo Pydantic) que se pasa por todo el grafo. Cada nodo recibe el
+  estado (o un subconjunto, si se declaran `InputState`/`OutputState`/
+  `PrivateState` separados) y devuelve un **update parcial** — no el estado
+  completo. Probé esto con `InputState`/`OverallState`/`PrivateState`/
+  `OutputState` en un grafo de 3 nodos donde cada uno lee de un canal y
+  escribe en otro, y funcionó exactamente así: `node_1` escribe en
+  `OverallState`, `node_2` lee de ahí y escribe en `PrivateState`, `node_3`
+  lee de `PrivateState` y arma el `OutputState` final.
+- **Nodo.** Una función que recibe estado y devuelve una actualización de
+  estado. Nada más — no decide a dónde ir después (eso es trabajo del edge),
+  salvo que sea un nodo tipo `Command` (que mi tutor y yo ya distinguimos
+  esta semana para T19: si el nodo solo calcula, va con conditional edge).
+- **Edge.** Conexión entre nodos. Puede ser fija (`add_edge`, siempre va de
+  A a B) o condicional (`add_conditional_edges`, una función del estado
+  decide el destino, como `should_continue` devolviendo `"tool_node"` o
+  `END` según si el último mensaje tiene `tool_calls`).
+- **El ciclo es lo que hace posible el multi-tool-call, y lo comprobé
+  rompiéndolo.** Con el edge `tool_node → llm_call` presente, le pedí al
+  agente derivar una expresión, multiplicar y dividir el resultado — hizo
+  las tres cosas en secuencia porque después de cada tool call volvía a
+  `llm_call` a decidir el siguiente paso. Al comentar ese edge, el agente
+  ejecutó `multiply` una sola vez y terminó ahí — sin el edge de retorno,
+  `tool_node` no tiene a dónde ir y el grafo termina implícitamente. Es la
+  demostración empírica de por qué T22 (reescritura de query + reintento)
+  necesita un ciclo real, no solo un conditional edge de ida.
+- **El orden en que declaro los edges no afecta el grafo compilado.**
+  Definí primero el `add_edge("tool_node", "llm_call")` y después el
+  conditional edge, y también al revés — mismo comportamiento en ambos
+  casos. El grafo se arma con la suma de todas las llamadas a
+  `add_edge`/`add_conditional_edges` antes de `compile()`, no importa en
+  qué secuencia se llamaron.
+- **`TypedDict` no valida en runtime; Pydantic sí, en cada actualización de
+  estado.** Me había quedado la duda de qué significa "validación
+  recursiva" con Pydantic como estado — sí es lo que sospechaba: cada vez
+  que un nodo devuelve un update, si el estado es un modelo Pydantic, se
+  valida contra los tipos declarados en ese momento, no solo al construir
+  el estado inicial. Con `TypedDict` esa verificación no existe en
+  ejecución — es solo información para el type checker.
+- **Un reducer decide cómo se combina el valor viejo con el nuevo, no lo
+  reemplaza por default.** Sin anotación, una clave se sobrescribe. Con
+  `Annotated[list[str], operator.add]` (o un reducer propio como
+  `append_strings(left, right)`), el update se acumula en vez de pisar el
+  valor anterior — así es como `messages` en `MessagesState` va creciendo
+  turno a turno en vez de perder el historial.
+- **Ya tengo un primer borrador del estado para T18**, como `dataclass`:
+  `query: str`, `documents: list[Document]`, `answer: str`,
+  `messages: Annotated[list, add_messages]`, `rewritten_query: str` — con
+  `rewritten_query` ya pensando en T22 antes de empezar T18.
+
+### Errores interesantes
+
+- En el notebook, re-ejecutar la celda de `greet = with_exclamation(greet)`
+  varias veces sin reiniciar el kernel apiló wrappers uno sobre otro (el
+  output mostró tres `"EJECUTANDO"` y `"!!!"` en vez de uno) — cada
+  ejecución envolvía el `greet` ya envuelto de la ejecución anterior, no el
+  original. No es un bug de la función, es un recordatorio de que el
+  estado de un notebook persiste entre celdas y `x = f(x)` no es idempotente
+  si se re-corre la celda.
+
+### ¿Qué no entendí bien?
+
+- El mecanismo de flujo de la información ya que el patrón me muestra que la función que envuelve recibe los mismo argumentos de la función que quiero envolver, pero aún así, no asimilo muy bien cómo fluye la información ya que estoy acostrumbrado a un patrón más lineal (spaguetti)
+
+---
