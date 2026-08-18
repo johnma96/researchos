@@ -51,8 +51,8 @@ async def hybrid_search(
 
     results = await asyncio.gather(*[retriever.search(query, n) for retriever in retrievers])
 
-    rrf_scores = {}
-    docs_by_id = {}
+    rrf_scores: dict[str, float] = {}
+    docs_by_id: dict[str, Document] = {}
 
     for ranking in results:
         for rank, doc in enumerate(ranking, start=1):  # 1-indexed
