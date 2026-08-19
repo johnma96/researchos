@@ -1,11 +1,6 @@
-from collections.abc import Awaitable, Callable
-
 from researchos.application.agents.agent_utils import build_rag_messages
-from researchos.domain.interfaces import LLMProvider
-from researchos.domain.models import Document
+from researchos.domain.interfaces import LLMProvider, RetrieveFn
 from researchos.domain.prompts import PromptTemplate
-
-RetrieveFn = Callable[[str], Awaitable[list[Document]]]
 
 
 async def answer_query(query: str, llm: LLMProvider, retrieve: RetrieveFn) -> str:

@@ -16,10 +16,14 @@ Usage in tests:
             pass
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Protocol
 
 from .models import Document, Message
+
+RetrieveFn = Callable[[str], Awaitable[list[Document]]]
+
+AnswerFn = Callable[[str], Awaitable[str]]
 
 
 class LLMProvider(Protocol):

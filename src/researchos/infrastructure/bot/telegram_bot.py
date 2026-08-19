@@ -1,15 +1,14 @@
 """Telegram bot adapter — delivery channel for the RAG engine."""
 
 import logging
-from collections.abc import Awaitable, Callable
 
 from telegram import Update
 from telegram.constants import MessageLimit
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
-logger = logging.getLogger(__name__)
+from researchos.domain.interfaces import AnswerFn
 
-AnswerFn = Callable[[str], Awaitable[str]]
+logger = logging.getLogger(__name__)
 
 
 def _split_message(text: str, limit: int = MessageLimit.MAX_TEXT_LENGTH) -> list[str]:

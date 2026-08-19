@@ -4,6 +4,7 @@ These models represent the fundamental concepts of the system.
 All other layers reference these models. They have zero external dependencies.
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -91,3 +92,18 @@ class AgentOutput(BaseModel):
     answer: str
     sources: list[Document] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
+
+
+@dataclass
+class ResearchContext:
+    """State passed between LangGraph nodes in the research agent (ADR-005).
+
+    A dataclass rather than a Pydantic BaseModel: LangGraph accepts
+    TypedDict/dataclass/BaseModel as state schemas equally, and a dataclass
+    avoids re-validating the state on every node's partial update. Revisit
+    as a BaseModel if cross-field validation becomes necessary.
+    """
+
+    query: str
+    documents: list[Document] = field(default_factory=list)
+    answer: str = ""
