@@ -52,4 +52,23 @@
 
 ---
 
+## ADR-005: LangGraph layer placement — state in domain, nodes in application, assembly in infrastructure
+
+**Date:** 2026-08
+**Status:** Accepted
+
+**Context:** V2 introduces LangGraph, which is a borderline case for the dependency rule: unlike an SDK or a DB driver, it expresses control flow, and control flow is `application/`'s job. Three options were evaluated:
+1. state, nodes and graph all in `application/agents/research_agent/`, accepting the `langgraph` import as a documented exception
+2. state in `domain/`, pure nodes in `application/`, assembly in `infrastructure/`;
+3.  everything in `infrastructure/orchestration/`, with `application/` exposing only the functions nodes call.
+
+Option 1 is what every official example does but creates an erosion precedent — the project already carries `ingestion_service.py` importing `httpx`/`fitz` as *debt*, not as an accepted exception. Option 3 would put business rules like "if local retrieval is thin, search arXiv" (T19) inside `infrastructure/`. The deciding finding: a reducer is just a `Callable[[T, T], T]` (the official quickstart uses stdlib `operator.add`), so **only `StateGraph`/`START`/`END`/`compile()` truly require the framework** — the state and the nodes do not. A premise in favour of importing `add_messages` into the state was investigated and discarded: it dedupes messages by `id` *within a thread*, it is not what isolates concurrent users — that is the checkpointer's `thread_id` (T22).
+
+**Decision:** Option 2. `ResearchContext` (`query`, `documents`, `answer`) in `domain/models.py` with no external imports; nodes as pure `(ResearchContext) -> dict` functions in `application/agents/research_agent/nodes.py`; `StateGraph`, edges and `compile()` in `infrastructure/orchestration/research_graph.py` — the only file in the project importing `langgraph`. T19 routing uses **conditional edges**, not `Command(goto=...)`, so the routing function stays a pure `state -> str` in `application/` and can be tested without executing the node (and its LLM call). `messages` and `rewritten_query` are deliberately not declared yet: they arrive in T22, once the required merge semantics is known.
+
+**Consequences:** `domain/` and `application/` tests run without `langgraph` installed; nodes are tested by passing a fabricated state and asserting the returned dict. `answer_query` keeps working without the graph, which T24 needs to run the V1 pipeline and the V2 agent side by side over the same queries. Fourth instance of the same project pattern after `AnswerFn`, `RetrieveFn` and `with_logging`: the core never knows the mechanism invoking it. Cost: the agent lives across three files in two layers, no official example looks like this, so tutorial code must be relocated rather than copied. Framework portability was *not* a reason — node return conventions are LangGraph-specific and would be rewritten anyway; ADK appears in V6 as a comparison exercise, not a migration. Re-evaluate if: multi-agent in V6 forces `Command` (mandatory for subgraph→parent routing, which would make those nodes impure), the assembly file starts accumulating business logic, or a second piece outside the assembly requires the framework. For T22, `messages` will first get a hand-written reducer in `domain/` (a dedupe-by-`id` dict comprehension, ~15 lines) and later the split-state variant as a comparison exercise — `GraphState(TypedDict)` in `infrastructure/` composing `ResearchContext` from `domain/` plus `Annotated[list, add_messages]`, on the grounds that a LangChain-formatted message list with a LangGraph reducer is a framework structure, not a domain model.
+
+
+---
+
 <!-- Add new ADRs below following this template -->
