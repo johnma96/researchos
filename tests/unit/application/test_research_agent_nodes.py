@@ -41,3 +41,21 @@ class TestGenerateNode:
 
         assert result == {"answer": "This is a mock response."}
         assert len(mock_llm.calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_passes_query_and_documents_to_llm(
+        self, mock_llm: MockLLMProvider, sample_documents: list[Document]
+    ):
+        """A node that ignored state.documents would still return an answer —
+        this asserts on what was actually sent to the LLM, not just the output."""
+        generate_node = make_generate_node(mock_llm)
+        state = ResearchContext(query="What is RAG?", documents=sample_documents)
+
+        await generate_node(state)
+
+        messages = mock_llm.calls[0]
+        assert messages[0].role == "system"
+        assert messages[1].role == "user"
+        assert "What is RAG?" in messages[1].content
+        for doc in sample_documents:
+            assert doc.text in messages[1].content

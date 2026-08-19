@@ -32,10 +32,13 @@ def build_research_graph(
     """
     builder = StateGraph(ResearchContext)
 
-    # Add nodes. The ignores below are a stub limitation, not a real type error:
-    # mypy cannot bind add_node's generic NodeInputT against a plain async Callable
-    # (reproduced with a minimal StateGraph outside this project too, including
-    # passing input_schema explicitly).
+    # Add nodes. The ignores below are a stub limitation (langgraph==1.2.11,
+    # mypy==1.20.1), not a real type error: mypy cannot bind add_node's generic
+    # NodeInputT against a plain async Callable (reproduced with a minimal
+    # StateGraph outside this project too, including passing input_schema
+    # explicitly). Tracked upstream as langchain-ai/langgraph#5000 (making
+    # StateGraph/CompiledStateGraph generic-safe is still open, no target
+    # version yet) — re-check this ignore next time langgraph is upgraded.
     builder.add_node("retrieve", make_retrieve_node(retrieve))  # type: ignore[call-overload]
     builder.add_node("generate", make_generate_node(llm))  # type: ignore[call-overload]
 
