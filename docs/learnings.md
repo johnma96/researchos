@@ -502,3 +502,43 @@ Regla simple para ResearchOS:
 - El mecanismo de flujo de la información ya que el patrón me muestra que la función que envuelve recibe los mismo argumentos de la función que quiero envolver, pero aún así, no asimilo muy bien cómo fluye la información ya que estoy acostrumbrado a un patrón más lineal (spaguetti)
 
 ---
+
+**Fecha:** 19/08/2026
+
+### ¿Qué aprendí?
+
+- **Un reducer de LangGraph es solo un `Callable[[T, T], T]`.** El quickstart oficial usa `operator.add`, de la biblioteca estándar. `add_messages` es una conveniencia, no un requisito. Consecuencia arquitectónica: el estado y los nodos pueden definirse sin importar LangGraph; lo único inevitable es `StateGraph`/`START`/`END`/`compile()`, que pertenecen al ensamblado.
+
+- **`add_messages` no hace lo que creía.** Deduplica y actualiza mensajes por `id` *dentro de un mismo hilo*, para editar o corregir mensajes. El aislamiento entre usuarios concurrentes lo da el `thread_id` del checkpointer, no el reducer. Confundí las dos cosas y sobre esa premisa equivocada casi justifiqué una excepción a la regla de capas.
+
+- **Los nodos reciben el estado completo, siempre.** No existe vista parcial: la firma es `(ResearchContext) -> dict`. Lo que varía es qué campos lee cada nodo y qué devuelve. Y devuelven un **dict parcial** — LangGraph fusiona con el estado existente, no hay que reconstruir el objeto.
+
+- **Fábricas de nodos para inyectar dependencias.** Un nodo no admite parámetros extra, pero necesita `RetrieveFn` y `LLMProvider`. Tres salidas: meterlas al estado (revienta en T22, el checkpointer tiene que serializar y un cliente HTTP no es serializable), globales de módulo (mete infraestructura concreta en `application/`), o una fábrica que las capture en closure y devuelva el nodo. La tercera es la correcta — quinta aplicación del mismo patrón después de `AnswerFn`, `RetrieveFn` y `with_logging`.
+
+- **Beneficio no buscado de la fábrica:** el prompt de sistema se lee del disco **una vez** al construir el grafo, en el cuerpo de la fábrica. Hoy `answer_query` lo lee en cada pregunta.
+
+- **Campo obligatorio = fallo temprano.** `query` sin default hace que `ResearchContext()` lance `TypeError` al construir. Con `query: str = ""` se construiría bien y el error aparecería mucho después: embedding de string vacío, retrieval basura, respuesta rara, y hay que rastrear hacia atrás. Criterio: obligatorio lo que el sistema no puede inventar; con default lo que empieza vacío por naturaleza.
+
+- **Elegir dataclass sobre TypedDict cambia la sintaxis de acceso.** Los ejemplos oficiales usan `state["query"]` porque declaran el estado como `TypedDict`. Con dataclass es `state.query` — y mypy caza los typos, cosa que el acceso por string no permite.
+
+### ¿Qué no entendí bien / queda abierto?
+
+- `documents` no tiene reducer, así que se reemplaza. En T22, si el ciclo de reescritura corre el nodo de recuperación dos veces, la segunda tanda pisa la primera. Probablemente sea lo deseado (quiero los documentos de la mejor query, no la unión), pero es una decisión sin confirmar.
+- No verifiqué si `StateGraph(ResearchContext)` intenta construir el estado sin argumentos en algún punto interno. Si lo hiciera, `query` obligatorio sería un problema.
+
+### Decisiones de diseño
+
+- **ADR-005**: estado en `domain/models.py`, nodos puros en `application/agents/research_agent/nodes.py`, ensamblado en `infrastructure/orchestration/research_graph.py`. Único archivo del proyecto que importa `langgraph` es el del ensamblado. Se evaluaron tres opciones y se descartó la portabilidad de framework como razón — las razones reales son correr V1 y V2 en paralelo (T24), testear ruteo sin montar el grafo (T19), y mantener `application/` libre de frameworks.
+- Estado inicial de tres campos: `query`, `documents`, `answer`. `messages` y `rewritten_query` se posponen a T22, cuando se conozca la semántica de fusión que cada uno necesita.
+- `AnswerFn` y `RetrieveFn` movidos a `domain/interfaces.py`. Son vocabulario de contratos, igual que los Protocols; tenerlos en `rag_service.py` obligaba a `nodes.py` a importar de un servicio con el que no tiene relación.
+- Para T19 se usarán conditional edges, no `Command(goto=...)`: el criterio de aceptación pide testear el ruteo aislado, y con `Command` habría que ejecutar el nodo completo con su llamada al LLM.
+
+### Errores interesantes
+
+- Puse `await make_retrieve_node(...)` dentro de `build_research_graph`. Doble error: la fábrica es `def` normal y no devuelve corrutina, y la función contenedora tampoco es `async`, así que era `SyntaxError` al importar. Tercera vez que confundo el tiempo de la fábrica con el tiempo de la función que devuelve — la regla de async se aplica a cada función por separado, no al archivo.
+- Escribí `state["query"]` copiando el patrón de los ejemplos oficiales, que usan `TypedDict`. Con dataclass es acceso por atributo.
+- Cargué el prompt de sistema en `make_retrieve_node`, donde no se usa. Va en `make_generate_node`.
+- Corrí `nodes.py` esperando ver salida. No tiene bloque `__main__` — solo define funciones. El bloque de prueba estaba en `research_graph.py`.
+- El docstring de `research_graph.py` abría con cuatro comillas simples en vez de tres.
+
+---
