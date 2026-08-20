@@ -21,12 +21,8 @@ Eval dataset format (``eval_dataset.json``):
 
 import asyncio
 import json
-import sys
 
-if sys.platform == "linux":
-    __import__("pysqlite3")
-    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
-
+import _wiring  # noqa: F401  # applies the pysqlite3 patch before chromadb is imported below
 import chromadb
 
 from researchos.application.services.retrieval_service import hybrid_rerank_search, hybrid_search

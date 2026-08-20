@@ -14,11 +14,8 @@ This is an operational script, not part of the installable package.
 
 import argparse
 import asyncio
-import sys
 
-if sys.platform == "linux":
-    __import__("pysqlite3")
-    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+import _wiring  # noqa: F401  # applies the pysqlite3 patch before ingest_papers touches chromadb
 
 from researchos.application.services.ingestion_service import ingest_papers
 from researchos.paths import ensure_dirs

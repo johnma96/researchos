@@ -502,3 +502,78 @@ Regla simple para ResearchOS:
 - El mecanismo de flujo de la información ya que el patrón me muestra que la función que envuelve recibe los mismo argumentos de la función que quiero envolver, pero aún así, no asimilo muy bien cómo fluye la información ya que estoy acostrumbrado a un patrón más lineal (spaguetti)
 
 ---
+
+**Fecha:** 19/08/2026
+
+### ¿Qué aprendí?
+
+- **Un reducer de LangGraph es solo un `Callable[[T, T], T]`.** El quickstart oficial usa `operator.add`, de la biblioteca estándar. `add_messages` es una conveniencia, no un requisito. Consecuencia arquitectónica: el estado y los nodos pueden definirse sin importar LangGraph; lo único inevitable es `StateGraph`/`START`/`END`/`compile()`, que pertenecen al ensamblado.
+
+- **`add_messages` no hace lo que creía.** Deduplica y actualiza mensajes por `id` *dentro de un mismo hilo*, para editar o corregir mensajes. El aislamiento entre usuarios concurrentes lo da el `thread_id` del checkpointer, no el reducer. Confundí las dos cosas y sobre esa premisa equivocada casi justifiqué una excepción a la regla de capas.
+
+- **Los nodos reciben el estado completo, siempre.** No existe vista parcial: la firma es `(ResearchContext) -> dict`. Lo que varía es qué campos lee cada nodo y qué devuelve. Y devuelven un **dict parcial** — LangGraph fusiona con el estado existente, no hay que reconstruir el objeto.
+
+- **Fábricas de nodos para inyectar dependencias.** Un nodo no admite parámetros extra, pero necesita `RetrieveFn` y `LLMProvider`. Tres salidas: meterlas al estado (revienta en T22, el checkpointer tiene que serializar y un cliente HTTP no es serializable), globales de módulo (mete infraestructura concreta en `application/`), o una fábrica que las capture en closure y devuelva el nodo. La tercera es la correcta — quinta aplicación del mismo patrón después de `AnswerFn`, `RetrieveFn` y `with_logging`.
+
+- **Beneficio no buscado de la fábrica:** el prompt de sistema se lee del disco **una vez** al construir el grafo, en el cuerpo de la fábrica. Hoy `answer_query` lo lee en cada pregunta.
+
+- **Campo obligatorio = fallo temprano.** `query` sin default hace que `ResearchContext()` lance `TypeError` al construir. Con `query: str = ""` se construiría bien y el error aparecería mucho después: embedding de string vacío, retrieval basura, respuesta rara, y hay que rastrear hacia atrás. Criterio: obligatorio lo que el sistema no puede inventar; con default lo que empieza vacío por naturaleza.
+
+- **Elegir dataclass sobre TypedDict cambia la sintaxis de acceso.** Los ejemplos oficiales usan `state["query"]` porque declaran el estado como `TypedDict`. Con dataclass es `state.query` — y mypy caza los typos, cosa que el acceso por string no permite.
+
+### ¿Qué no entendí bien / queda abierto?
+
+- `documents` no tiene reducer, así que se reemplaza. En T22, si el ciclo de reescritura corre el nodo de recuperación dos veces, la segunda tanda pisa la primera. Probablemente sea lo deseado (quiero los documentos de la mejor query, no la unión), pero es una decisión sin confirmar.
+- No verifiqué si `StateGraph(ResearchContext)` intenta construir el estado sin argumentos en algún punto interno. Si lo hiciera, `query` obligatorio sería un problema.
+
+### Decisiones de diseño
+
+- **ADR-005**: estado en `domain/models.py`, nodos puros en `application/agents/research_agent/nodes.py`, ensamblado en `infrastructure/orchestration/research_graph.py`. Único archivo del proyecto que importa `langgraph` es el del ensamblado. Se evaluaron tres opciones y se descartó la portabilidad de framework como razón — las razones reales son correr V1 y V2 en paralelo (T24), testear ruteo sin montar el grafo (T19), y mantener `application/` libre de frameworks.
+- Estado inicial de tres campos: `query`, `documents`, `answer`. `messages` y `rewritten_query` se posponen a T22, cuando se conozca la semántica de fusión que cada uno necesita.
+- `AnswerFn` y `RetrieveFn` movidos a `domain/interfaces.py`. Son vocabulario de contratos, igual que los Protocols; tenerlos en `rag_service.py` obligaba a `nodes.py` a importar de un servicio con el que no tiene relación.
+- Para T19 se usarán conditional edges, no `Command(goto=...)`: el criterio de aceptación pide testear el ruteo aislado, y con `Command` habría que ejecutar el nodo completo con su llamada al LLM.
+
+### Errores interesantes
+
+- Puse `await make_retrieve_node(...)` dentro de `build_research_graph`. Doble error: la fábrica es `def` normal y no devuelve corrutina, y la función contenedora tampoco es `async`, así que era `SyntaxError` al importar. Tercera vez que confundo el tiempo de la fábrica con el tiempo de la función que devuelve — la regla de async se aplica a cada función por separado, no al archivo.
+- Escribí `state["query"]` copiando el patrón de los ejemplos oficiales, que usan `TypedDict`. Con dataclass es acceso por atributo.
+- Cargué el prompt de sistema en `make_retrieve_node`, donde no se usa. Va en `make_generate_node`.
+- Corrí `nodes.py` esperando ver salida. No tiene bloque `__main__` — solo define funciones. El bloque de prueba estaba en `research_graph.py`.
+- El docstring de `research_graph.py` abría con cuatro comillas simples en vez de tres.
+
+---
+
+**Fecha:** 20/08/2026
+
+### ¿Qué aprendí?
+
+- **El grafo se compila una vez, no por consulta.** Mi primera versión llamaba `build_research_graph()` dentro del closure `answer_with_graph`, así que en cada pregunta se instanciaba `StateGraph`, se ejecutaban las dos fábricas, se cableaban las edges y se compilaba. Peor: `make_generate_node` lee el prompt de sistema del disco en el cuerpo de la fábrica, así que la ventaja de leerlo una sola vez se anulaba. Tercera vez que cometo el mismo error de poner construcción cara en el lugar de ejecución (antes: `LocalEmbedder()` dentro del closure de logging).
+
+- **Un composition root mezcla tres cosas distintas:** construcción de dependencias (embedder, Chroma, BM25, LLM), composición del motor (grafo, envolturas) y arranque del canal (`bot.run()`). Solo la primera es común a todos los puntos de entrada; por eso es la única que se extrajo a `_wiring.py`.
+
+- **`scripts/` no está en el paquete instalable, y eso cambia cómo se importa.** Al correr `uv run python scripts/x.py`, Python pone el directorio del *script* en `sys.path`, no la raíz del repo. Por eso el import es `from _wiring import ...` y no `from scripts._wiring import ...`.
+
+- **El parche de `pysqlite3` tiene que estar a nivel de módulo, no dentro de una función.** `chromadb` importa `sqlite3` al importarse, así que la sustitución en `sys.modules` debe ocurrir antes. Importar `_wiring` es lo que aplica el parche.
+
+- **Duplicación deliberada vs. accidental.** Extraje `build_dependencies` porque cómo se conecta a Chroma y cómo se reconstruye BM25 *deben* ser idénticos entre scripts. Consideré extraer también `retrieve_hybrid_rerank`, que está duplicada palabra por palabra, y lo descarté: es una elección de composición, no infraestructura. El smoke test puede legítimamente querer una estrategia distinta a la del bot, y centralizarla mataría ese aislamiento. Además T24 va a necesitar varias estrategias conviviendo. **La regla: se extrae cuando las copias deben cambiar juntas, no cuando se ven iguales.**
+
+- **Un `NetworkError` de `httpx.ReadError` en el long polling no es un fallo del aplicativo.** El traceback vive entero en `telegram/`, `httpx/` y `httpcore/`, y ocurre dentro de una función llamada `network_retry_loop`: la biblioteca ya lo contempla y reintenta. En un entorno corporativo con proxy es esperable.
+
+### ¿Qué no entendí bien / queda abierto?
+
+- El log dice `No error handlers are registered, logging exception`. Hoy eso aplica a errores de red que la biblioteca resuelve sola, pero si mañana el grafo lanza una excepción, el usuario en Telegram no recibe nada y yo veo un muro de traceback sin poder distinguir "la red parpadeó" de "el grafo reventó". Falta un `add_error_handler`.
+- `build_dependencies` carga **todos** los documentos de Chroma en memoria en cada arranque para reconstruir BM25, porque BM25 no persiste. Con el corpus actual es instantáneo, pero T21 (briefing matutino) va a ingerir papers cada mañana y ese arranque se va a alargar.
+
+### Decisiones de diseño
+
+- `build_dependencies()` en `scripts/_wiring.py` devolviendo un `NamedTuple` (`chroma`, `bm25`, `llm`). NamedTuple sobre tupla suelta: `deps.chroma` se lee mejor que `deps[0]` y mypy lo verifica.
+- **No** se extrae `retrieve_hybrid_rerank` a `_wiring.py` (ver arriba). La duplicación se mantiene a propósito.
+- `answer_v1_pipeline` y `answer_v2_graph` conviven en `run_telegram_bot.py`, con el bot cableado al segundo. El primero se conserva para T24, donde hay que correr ambos sobre las mismas queries.
+- `run_research_graph.py` acepta la query por `argparse` en vez de hardcodearla.
+
+### Errores interesantes
+
+- `build_research_graph()` dentro del closure en vez de a nivel de módulo (ver arriba).
+- El criterio de aceptación de T18 decía que `git diff --stat` no debía tocar `telegram_bot.py`, y lo toca. Pero el diff es **solo** el import de `AnswerFn` desde `domain/interfaces` en vez de definirlo localmente — consecuencia del movimiento de alias de ayer, no adaptación al grafo. El criterio se cumple en lo que buscaba verificar: conectar el grafo no requirió modificar la lógica del adaptador.
+
+---

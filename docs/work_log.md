@@ -328,3 +328,97 @@
   `rewritten_query`)
 
 ---
+
+## 2026-08-19
+
+### Trabajo desarrollado
+- Arrancado T18: primer grafo LangGraph mínimo (`retrieve → generate`),
+  siguiendo la ubicación de capas decidida en ADR-005
+- `domain/models.py`: nuevo `ResearchContext` (dataclass) — estado del agente
+  (`query`, `documents`, `answer`); `messages`/`rewritten_query` quedan para
+  T22, cuando se conozca la semántica de merge que necesitan
+- `domain/interfaces.py`: `RetrieveFn` y `AnswerFn` se relocalizan aquí desde
+  `rag_service.py` y `telegram_bot.py` respectivamente — quedan como los
+  primeros alias de tipo compartidos entre más de un consumidor (ADR-004)
+- `application/agents/research_agent/nodes.py` (nuevo): `make_retrieve_node`
+  y `make_generate_node`, fábricas que devuelven nodos puros
+  `(ResearchContext) -> dict`, inyectando `RetrieveFn`/`LLMProvider` por
+  clausura — cero imports de LangGraph, tal como fija ADR-005
+- `infrastructure/orchestration/research_graph.py` (nuevo):
+  `build_research_graph()` ensambla el `StateGraph` (`retrieve → generate`)
+  — único archivo del proyecto que importa `langgraph`
+- `scripts/run_research_graph.py` (nuevo): script de humo con CLI (`-q`) que
+  corre el grafo contra Chroma/Anthropic reales para verificación manual
+- `docs/architecture.md`: agregado ADR-005 (ubicación de capas para
+  LangGraph — estado en domain, nodos en application, ensamblaje en
+  infrastructure), con la comparación de las 3 opciones evaluadas
+- Revisión de calidad sobre todo lo anterior: `ruff check --fix` +
+  `ruff format` (imports desordenados, whitespace, EOF); agregados
+  docstrings y type hints faltantes (`build_research_graph`, nodos); un
+  error real de `mypy` en `add_node` resulta ser una limitación de los stubs
+  de LangGraph (reproducida en un caso mínimo fuera del proyecto, incluso
+  pasando `input_schema` explícito) — silenciado con `type: ignore` puntual
+  y documentado, no es deuda de código propio
+- `tests/unit/application/test_research_agent_nodes.py` (nuevo): cubre
+  ambos nodos (`retrieve_node`, `generate_node`) con `ResearchContext`
+  fabricado, verificando el dict parcial devuelto — sin ejecutar el grafo
+
+### Próximos pasos
+- Conectar el grafo al bot de Telegram (T18, cierre)
+- Extraer el wiring duplicado entre `run_telegram_bot.py` y
+  `run_research_graph.py` a una función compartida — ya hay dos
+  consumidores, la abstracción se justifica
+- Silenciar los ~34 errores de mypy provenientes de `chromadb` con overrides
+  en `pyproject.toml`, y arreglar los de código propio (el `datetime | None`
+  en `ingestion_service.py:70`)
+- Confirmar la decisión de que `documents` se reemplace y no se acumule
+  entre reintentos (relevante para T22)
+
+---
+
+## 2026-08-20
+
+### Trabajo desarrollado
+- Correcciones a las 2 observaciones del tutor sobre el commit de nodos de
+  ayer: `research_graph.py` documenta la limitación de mypy con versión
+  (`langgraph==1.2.11`) y el issue upstream (`langchain-ai/langgraph#5000`);
+  `test_research_agent_nodes.py` ahora verifica el contenido real enviado al
+  LLM (query + texto de documentos), no solo la respuesta — confirmado que
+  detecta la regresión si el nodo ignora `state.documents`
+- `CLAUDE.md`: "Current Phase" actualizada de V1 a V2 (ventana
+  17/08–02/10/2026); la regla sobre LangGraph en "What NOT to do" corregida
+  para reflejar ADR-005 (prohibido solo fuera de `research_graph.py`, no en
+  general)
+- Bot de Telegram conectado al grafo LangGraph (T18/#6): `answer_v2_graph`
+  invoca `build_research_graph(...).ainvoke(...)`, reemplazando
+  `answer_query` como función cableada a `TelegramBot`. `answer_v1_pipeline`
+  se conserva sin cablear, para T24. Nuevo `test_research_graph.py` que
+  invoca el grafo completo con retriever y LLM mockeados — cierra los 3
+  criterios de aceptación pendientes de T18
+- Wiring duplicado entre `run_telegram_bot.py` y `run_research_graph.py`
+  extraído a `scripts/_wiring.py` (`build_dependencies()`), incluyendo el
+  parche de `pysqlite3` que estaba copiado en 4 scripts.
+  `retrieve_hybrid_rerank` se mantiene duplicada a propósito — decisión de
+  composición, no de infraestructura (ver `docs/learnings.md`)
+- `run_telegram_bot.py` ya importa `AnswerFn` directo desde
+  `domain/interfaces` (no vía re-export de `telegram_bot.py`)
+- `docs/learnings.md`: entrada de hoy documenta el error de compilar el
+  grafo por consulta en vez de una sola vez, la distinción composition-root
+  vs. wiring, y el criterio para decidir cuándo extraer duplicación
+
+### Próximos pasos
+- `add_error_handler` en `telegram_bot.py`: loguear la excepción y
+  responder al usuario en vez de dejarlo esperando
+- BM25 se reconstruye en memoria desde Chroma en cada arranque; revisar
+  cuando el corpus supere unos cientos de documentos (T21 lo va a hacer
+  crecer)
+- `run_research_graph.py` imprime los documentos completos; dejar solo
+  `doc_id` y score para que la salida sea legible
+- Deuda de mypy: 34 errores, la mayoría de `chromadb`; silenciar con
+  overrides en `pyproject.toml` y arreglar los de código propio
+- Decidir si `documents` debe acumularse o reemplazarse cuando T22
+  introduzca el ciclo de reescritura
+- Al llegar a T23 (Dockerfile): decidir si el bootstrap se mueve de
+  `scripts/` a `src/researchos/` para que sea importable desde la imagen
+
+---
