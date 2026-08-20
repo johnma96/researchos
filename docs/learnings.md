@@ -542,3 +542,38 @@ Regla simple para ResearchOS:
 - El docstring de `research_graph.py` abría con cuatro comillas simples en vez de tres.
 
 ---
+
+**Fecha:** 20/08/2026
+
+### ¿Qué aprendí?
+
+- **El grafo se compila una vez, no por consulta.** Mi primera versión llamaba `build_research_graph()` dentro del closure `answer_with_graph`, así que en cada pregunta se instanciaba `StateGraph`, se ejecutaban las dos fábricas, se cableaban las edges y se compilaba. Peor: `make_generate_node` lee el prompt de sistema del disco en el cuerpo de la fábrica, así que la ventaja de leerlo una sola vez se anulaba. Tercera vez que cometo el mismo error de poner construcción cara en el lugar de ejecución (antes: `LocalEmbedder()` dentro del closure de logging).
+
+- **Un composition root mezcla tres cosas distintas:** construcción de dependencias (embedder, Chroma, BM25, LLM), composición del motor (grafo, envolturas) y arranque del canal (`bot.run()`). Solo la primera es común a todos los puntos de entrada; por eso es la única que se extrajo a `_wiring.py`.
+
+- **`scripts/` no está en el paquete instalable, y eso cambia cómo se importa.** Al correr `uv run python scripts/x.py`, Python pone el directorio del *script* en `sys.path`, no la raíz del repo. Por eso el import es `from _wiring import ...` y no `from scripts._wiring import ...`.
+
+- **El parche de `pysqlite3` tiene que estar a nivel de módulo, no dentro de una función.** `chromadb` importa `sqlite3` al importarse, así que la sustitución en `sys.modules` debe ocurrir antes. Importar `_wiring` es lo que aplica el parche.
+
+- **Duplicación deliberada vs. accidental.** Extraje `build_dependencies` porque cómo se conecta a Chroma y cómo se reconstruye BM25 *deben* ser idénticos entre scripts. Consideré extraer también `retrieve_hybrid_rerank`, que está duplicada palabra por palabra, y lo descarté: es una elección de composición, no infraestructura. El smoke test puede legítimamente querer una estrategia distinta a la del bot, y centralizarla mataría ese aislamiento. Además T24 va a necesitar varias estrategias conviviendo. **La regla: se extrae cuando las copias deben cambiar juntas, no cuando se ven iguales.**
+
+- **Un `NetworkError` de `httpx.ReadError` en el long polling no es un fallo del aplicativo.** El traceback vive entero en `telegram/`, `httpx/` y `httpcore/`, y ocurre dentro de una función llamada `network_retry_loop`: la biblioteca ya lo contempla y reintenta. En un entorno corporativo con proxy es esperable.
+
+### ¿Qué no entendí bien / queda abierto?
+
+- El log dice `No error handlers are registered, logging exception`. Hoy eso aplica a errores de red que la biblioteca resuelve sola, pero si mañana el grafo lanza una excepción, el usuario en Telegram no recibe nada y yo veo un muro de traceback sin poder distinguir "la red parpadeó" de "el grafo reventó". Falta un `add_error_handler`.
+- `build_dependencies` carga **todos** los documentos de Chroma en memoria en cada arranque para reconstruir BM25, porque BM25 no persiste. Con el corpus actual es instantáneo, pero T21 (briefing matutino) va a ingerir papers cada mañana y ese arranque se va a alargar.
+
+### Decisiones de diseño
+
+- `build_dependencies()` en `scripts/_wiring.py` devolviendo un `NamedTuple` (`chroma`, `bm25`, `llm`). NamedTuple sobre tupla suelta: `deps.chroma` se lee mejor que `deps[0]` y mypy lo verifica.
+- **No** se extrae `retrieve_hybrid_rerank` a `_wiring.py` (ver arriba). La duplicación se mantiene a propósito.
+- `answer_v1_pipeline` y `answer_v2_graph` conviven en `run_telegram_bot.py`, con el bot cableado al segundo. El primero se conserva para T24, donde hay que correr ambos sobre las mismas queries.
+- `run_research_graph.py` acepta la query por `argparse` en vez de hardcodearla.
+
+### Errores interesantes
+
+- `build_research_graph()` dentro del closure en vez de a nivel de módulo (ver arriba).
+- El criterio de aceptación de T18 decía que `git diff --stat` no debía tocar `telegram_bot.py`, y lo toca. Pero el diff es **solo** el import de `AnswerFn` desde `domain/interfaces` en vez de definirlo localmente — consecuencia del movimiento de alias de ayer, no adaptación al grafo. El criterio se cumple en lo que buscaba verificar: conectar el grafo no requirió modificar la lógica del adaptador.
+
+---

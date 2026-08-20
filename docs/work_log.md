@@ -373,3 +373,52 @@
   en `ingestion_service.py:70`)
 - Confirmar la decisión de que `documents` se reemplace y no se acumule
   entre reintentos (relevante para T22)
+
+---
+
+## 2026-08-20
+
+### Trabajo desarrollado
+- Correcciones a las 2 observaciones del tutor sobre el commit de nodos de
+  ayer: `research_graph.py` documenta la limitación de mypy con versión
+  (`langgraph==1.2.11`) y el issue upstream (`langchain-ai/langgraph#5000`);
+  `test_research_agent_nodes.py` ahora verifica el contenido real enviado al
+  LLM (query + texto de documentos), no solo la respuesta — confirmado que
+  detecta la regresión si el nodo ignora `state.documents`
+- `CLAUDE.md`: "Current Phase" actualizada de V1 a V2 (ventana
+  17/08–02/10/2026); la regla sobre LangGraph en "What NOT to do" corregida
+  para reflejar ADR-005 (prohibido solo fuera de `research_graph.py`, no en
+  general)
+- Bot de Telegram conectado al grafo LangGraph (T18/#6): `answer_v2_graph`
+  invoca `build_research_graph(...).ainvoke(...)`, reemplazando
+  `answer_query` como función cableada a `TelegramBot`. `answer_v1_pipeline`
+  se conserva sin cablear, para T24. Nuevo `test_research_graph.py` que
+  invoca el grafo completo con retriever y LLM mockeados — cierra los 3
+  criterios de aceptación pendientes de T18
+- Wiring duplicado entre `run_telegram_bot.py` y `run_research_graph.py`
+  extraído a `scripts/_wiring.py` (`build_dependencies()`), incluyendo el
+  parche de `pysqlite3` que estaba copiado en 4 scripts.
+  `retrieve_hybrid_rerank` se mantiene duplicada a propósito — decisión de
+  composición, no de infraestructura (ver `docs/learnings.md`)
+- `run_telegram_bot.py` ya importa `AnswerFn` directo desde
+  `domain/interfaces` (no vía re-export de `telegram_bot.py`)
+- `docs/learnings.md`: entrada de hoy documenta el error de compilar el
+  grafo por consulta en vez de una sola vez, la distinción composition-root
+  vs. wiring, y el criterio para decidir cuándo extraer duplicación
+
+### Próximos pasos
+- `add_error_handler` en `telegram_bot.py`: loguear la excepción y
+  responder al usuario en vez de dejarlo esperando
+- BM25 se reconstruye en memoria desde Chroma en cada arranque; revisar
+  cuando el corpus supere unos cientos de documentos (T21 lo va a hacer
+  crecer)
+- `run_research_graph.py` imprime los documentos completos; dejar solo
+  `doc_id` y score para que la salida sea legible
+- Deuda de mypy: 34 errores, la mayoría de `chromadb`; silenciar con
+  overrides en `pyproject.toml` y arreglar los de código propio
+- Decidir si `documents` debe acumularse o reemplazarse cuando T22
+  introduzca el ciclo de reescritura
+- Al llegar a T23 (Dockerfile): decidir si el bootstrap se mueve de
+  `scripts/` a `src/researchos/` para que sea importable desde la imagen
+
+---
