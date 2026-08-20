@@ -13,9 +13,10 @@ import chromadb
 from researchos.application.services.rag_service import answer_query
 from researchos.application.services.retrieval_service import hybrid_rerank_search, hybrid_search
 from researchos.config import settings
-from researchos.domain.models import Document
+from researchos.domain.models import Document, ResearchContext
 from researchos.infrastructure.bot.telegram_bot import AnswerFn, TelegramBot
 from researchos.infrastructure.llm.anthropic_llm import AnthropicLLM
+from researchos.infrastructure.orchestration.research_graph import build_research_graph
 from researchos.infrastructure.retrieval.bm25 import BM25Retriever
 from researchos.infrastructure.retrieval.chroma import ChromaVectorStore
 from researchos.infrastructure.retrieval.embedder import LocalEmbedder
@@ -48,8 +49,19 @@ async def retrieve_hybrid_rerank(query: str) -> list[Document]:
     return await hybrid_rerank_search(query=query, llm=llm, documents=candidates, k=K)
 
 
-async def answer(query: str) -> str:
+# V1 pipeline (function calls, no LangGraph). Not wired to the bot below —
+# kept so T24 can run it and answer_v2_graph side by side over the same queries.
+async def answer_v1_pipeline(query: str) -> str:
     return await answer_query(query, llm, retrieve=retrieve_hybrid_rerank)
+
+
+# V2 agent (LangGraph), wired to the bot below.
+research_graph = build_research_graph(retrieve=retrieve_hybrid_rerank, llm=llm)
+
+
+async def answer_v2_graph(query: str) -> str:
+    result = await research_graph.ainvoke(ResearchContext(query=query))
+    return result["answer"]
 
 
 def with_logging(answer_fn: AnswerFn) -> AnswerFn:
@@ -81,5 +93,5 @@ def with_logging(answer_fn: AnswerFn) -> AnswerFn:
     return logged_answer
 
 
-bot = TelegramBot(token=settings.telegram_bot_token, answer_fn=with_logging(answer))
+bot = TelegramBot(token=settings.telegram_bot_token, answer_fn=with_logging(answer_v2_graph))
 bot.run()
