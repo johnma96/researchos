@@ -10,9 +10,12 @@ Target domains: ML/AI, health/biomedicine, tech news.
 
 ## Current Phase
 
-- **Version:** V1 — RAG Robusto + Telegram
-- **Weeks:** 1–4
-- **Focus:** Iterative RAG (fixed → semantic → hybrid → reranking), Telegram bot
+- **Version:** V2 — Agente LangGraph + Briefing matutino
+- **Window:** 17/08 – 02/10/2026 (milestone due 02/10/2026)
+- **Focus:** Rebuild the RAG pipeline as a LangGraph agent (T18 in progress),
+  typed tools, conversational memory, morning briefing scheduler. See
+  `ROADMAP.md` for the full T18–T24 breakdown and `docs/architecture.md`
+  (ADR-005) for the LangGraph layer placement.
 
 > **UPDATE THIS** as you progress through versions.
 
@@ -87,7 +90,8 @@ src/researchos/
 
 ## What NOT to do
 
-- Do NOT use LangChain/LangGraph in V1. Direct Claude API calls only.
+- Do NOT import `langgraph` outside `infrastructure/orchestration/research_graph.py`.
+  Nodes and state stay framework-free — see ADR-005 in `docs/architecture.md`.
 - Do NOT put business logic in infrastructure/
 - Do NOT import infrastructure in domain/
 - Do NOT use class inheritance for agents — use composition via agent_utils.py
