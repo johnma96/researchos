@@ -1,6 +1,6 @@
 # RAG y retrieval — banco de preguntas
 
-4 preguntas. Fuente: `docs/interview_prep/bank.md`.
+5 preguntas. Fuente: `docs/interview_prep/bank.md`.
 
 #### [RG-001] Nivel: básico
 **Pregunta:** Dame un ejemplo concreto de una query donde BM25 supera a
@@ -98,3 +98,30 @@ lo que ya sabías que estaba, no calidad de retrieval.
 **Ejemplo en el proyecto:** El `learnings.md` del 01/06/2026 documenta
 exactamente este problema al observar scores 1.000/1.000 en el eval — la
 razón fue leakage por construir queries desde el corpus.
+
+---
+
+#### [RG-005] Nivel: avanzado
+**Pregunta:** `build_dependencies()` reconstruye el índice BM25 cargando
+**todos** los documentos de Chroma en memoria en cada arranque del bot,
+porque BM25 no persiste. ¿Qué problema anticipás cuando el corpus
+crezca, y cómo lo abordarías?
+
+**Respuesta esperada:** Hoy es instantáneo porque el corpus es pequeño
+(cientos de documentos), pero T21 (briefing matutino) va a ingerir papers
+todos los días, así que ese arranque va a crecer linealmente con el tiempo
+sin que nada lo frene. El síntoma no es un bug — es una decisión de diseño
+(BM25 en memoria, sin persistencia) que funciona mientras una asunción
+implícita (corpus chico) sea cierta, y deja de serlo silenciosamente.
+Abordajes posibles: persistir el índice BM25 serializado junto a Chroma y
+reconstruirlo solo si el corpus cambió; o mover la reconstrucción a un
+proceso de fondo desacoplado del arranque del bot, para que un arranque
+lento no bloquee la disponibilidad del canal.
+
+**Trampa común:** Descartarlo como "no es un problema hoy" sin dejarlo
+anotado. Las asunciones de escala que dejan de cumplirse silenciosamente
+son más peligrosas que un error explícito — no hay señal hasta que duele.
+
+**Ejemplo en el proyecto:** `scripts/_wiring.py:38-67` (`build_dependencies`);
+pendiente anotado en `docs/work_log.md` del 20/08, ligado a issue
+[#9](https://github.com/johnma96/researchos/issues/9) (T21).
