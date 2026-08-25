@@ -88,15 +88,20 @@ async def hybrid_rerank_search(
         k: Number of documents to return after reranking.
 
     Returns:
-        A tuple of (documents, any_relevant): up to ``k`` Documents in
-        LLM-ranked order (scores are not updated — the ordering itself is
-        the signal), and a bool indicating whether the LLM judged any of
-        them relevant enough to answer the query.
+        A tuple of (documents, has_sufficient_context): up to ``k`` Documents
+        in LLM-ranked order (scores are not updated — the ordering itself is
+        the signal), and a bool indicating whether the LLM judged the
+        documents, taken together, sufficient to answer the query.
 
     Raises:
         json.JSONDecodeError: If the LLM response is not valid JSON.
         KeyError: If the LLM returns a doc_id not present in ``documents``,
-            or omits ``ranked_ids``/``any_relevant`` from the response.
+            or omits ``ranked_ids`` from the response. ``has_sufficient_context``
+            defaults to ``True`` if omitted instead of raising — models are
+            more likely to skip emitting a negative boolean verdict than to
+            skip the ranking itself, and failing open here means a malformed
+            verdict degrades to "answer anyway" rather than crashing the
+            query (see docs/work_log.md 20/08 re: no add_error_handler yet).
     """
     docs_str = "\n".join(f'"{doc.doc_id}": {doc.text}' for doc in documents)
     prompt = PromptTemplate("tasks", "rerank").render(query=query, documents=docs_str)
@@ -109,7 +114,8 @@ async def hybrid_rerank_search(
     payload = json.loads(llm_answer[start:end])
 
     ranked_ids = payload["ranked_ids"]
-    any_relevant = payload["any_relevant"]
+    has_sufficient_context = payload.get("has_sufficient_context", True)
 
     docs_by_id = {doc.doc_id: doc for doc in documents}
-    return [docs_by_id[doc_id] for doc_id in ranked_ids[:k] if doc_id in docs_by_id], any_relevant
+    reranked = [docs_by_id[doc_id] for doc_id in ranked_ids[:k] if doc_id in docs_by_id]
+    return reranked, has_sufficient_context
