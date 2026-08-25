@@ -19,9 +19,14 @@ K = 5
 deps = build_dependencies()
 
 
-async def retrieve_hybrid_rerank(query: str) -> list[Document]:
+async def retrieve_with_verdict(query: str) -> tuple[list[Document], bool]:
     candidates = await hybrid_search(query, retrievers=[deps.chroma, deps.bm25], k=K * 2)
     return await hybrid_rerank_search(query=query, llm=deps.llm, documents=candidates, k=K)
+
+
+async def retrieve_hybrid_rerank(query: str) -> list[Document]:
+    documents, _ = await retrieve_with_verdict(query)
+    return documents
 
 
 # V1 pipeline (function calls, no LangGraph). Not wired to the bot below —
@@ -31,7 +36,7 @@ async def answer_v1_pipeline(query: str) -> str:
 
 
 # V2 agent (LangGraph), wired to the bot below.
-research_graph = build_research_graph(retrieve=retrieve_hybrid_rerank, llm=deps.llm)
+research_graph = build_research_graph(retrieve=retrieve_with_verdict, llm=deps.llm)
 
 
 async def answer_v2_graph(query: str) -> str:

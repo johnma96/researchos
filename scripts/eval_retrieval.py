@@ -61,9 +61,15 @@ def _reciprocal_rank(results: list[Document], source_paper: str) -> float:
 async def _rerank(
     query: str, chroma: ChromaVectorStore, bm25: BM25Retriever, llm: AnthropicLLM
 ) -> list[Document]:
-    """Run hybrid search then rerank the top-10 with Claude."""
+    """Run hybrid search then rerank the top-10 with Claude.
+
+    Discards the LLM-judge relevance verdict — this eval measures retrieval
+    quality against a known ground truth, it doesn't need the verdict used
+    for graph routing (see nodes.should_search_arxiv).
+    """
     candidates = await hybrid_search(query, retrievers=[chroma, bm25], k=K * 2)
-    return await hybrid_rerank_search(query=query, llm=llm, documents=candidates, k=K)
+    documents, _ = await hybrid_rerank_search(query=query, llm=llm, documents=candidates, k=K)
+    return documents
 
 
 async def main() -> None:

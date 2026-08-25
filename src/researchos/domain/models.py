@@ -106,4 +106,8 @@ class ResearchContext:
 
     query: str
     documents: list[Document] = field(default_factory=list)
+    # Default True only to satisfy ResearchContext(query=...) call sites that
+    # construct the initial state — the retrieve node always overwrites this
+    # before any router reads it (edges guarantee retrieve runs first).
+    has_relevant_context: bool = True
     answer: str = ""

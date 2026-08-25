@@ -18,12 +18,13 @@ class TestBuildResearchGraph:
     async def test_retrieve_then_generate_end_to_end(
         self, mock_llm: MockLLMProvider, sample_documents: list[Document]
     ):
-        async def fake_retrieve(query: str) -> list[Document]:
-            return sample_documents
+        async def fake_retrieve(query: str) -> tuple[list[Document], bool]:
+            return sample_documents, True
 
         graph = build_research_graph(retrieve=fake_retrieve, llm=mock_llm)
         result = await graph.ainvoke(ResearchContext(query="What is RAG?"))
 
         assert result["query"] == "What is RAG?"
         assert result["documents"] == sample_documents
+        assert result["has_relevant_context"] is True
         assert result["answer"] == "This is a mock response."

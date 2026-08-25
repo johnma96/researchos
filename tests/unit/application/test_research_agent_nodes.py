@@ -9,6 +9,7 @@ import pytest
 from researchos.application.agents.research_agent.nodes import (
     make_generate_node,
     make_retrieve_node,
+    should_search_arxiv,
 )
 from researchos.domain.models import Document, ResearchContext
 from tests.conftest import MockLLMProvider
@@ -17,15 +18,42 @@ from tests.conftest import MockLLMProvider
 @pytest.mark.unit
 class TestRetrieveNode:
     @pytest.mark.asyncio
-    async def test_returns_documents_from_retrieve_fn(self, sample_documents: list[Document]):
-        async def fake_retrieve(query: str) -> list[Document]:
+    async def test_returns_documents_and_verdict_from_retrieve_fn(
+        self, sample_documents: list[Document]
+    ):
+        async def fake_retrieve(query: str) -> tuple[list[Document], bool]:
             assert query == "What is RAG?"
-            return sample_documents
+            return sample_documents, True
 
         retrieve_node = make_retrieve_node(fake_retrieve)
         result = await retrieve_node(ResearchContext(query="What is RAG?"))
 
-        assert result == {"documents": sample_documents}
+        assert result == {"documents": sample_documents, "has_relevant_context": True}
+
+    @pytest.mark.asyncio
+    async def test_propagates_false_verdict(self, sample_documents: list[Document]):
+        async def fake_retrieve(query: str) -> tuple[list[Document], bool]:
+            return sample_documents, False
+
+        retrieve_node = make_retrieve_node(fake_retrieve)
+        result = await retrieve_node(ResearchContext(query="What is RAG?"))
+
+        assert result["has_relevant_context"] is False
+
+
+@pytest.mark.unit
+class TestShouldSearchArxiv:
+    def test_routes_to_generate_when_context_is_relevant(self, sample_documents: list[Document]):
+        state = ResearchContext(
+            query="What is RAG?", documents=sample_documents, has_relevant_context=True
+        )
+
+        assert should_search_arxiv(state) == "generate"
+
+    def test_routes_to_search_arxiv_when_context_is_not_relevant(self):
+        state = ResearchContext(query="What is RAG?", documents=[], has_relevant_context=False)
+
+        assert should_search_arxiv(state) == "search_arxiv"
 
 
 @pytest.mark.unit

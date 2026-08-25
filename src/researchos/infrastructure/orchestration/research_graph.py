@@ -11,20 +11,22 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from researchos.application.agents.research_agent.nodes import (
+    RetrieveWithVerdictFn,
     make_generate_node,
     make_retrieve_node,
 )
-from researchos.domain.interfaces import LLMProvider, RetrieveFn
+from researchos.domain.interfaces import LLMProvider
 from researchos.domain.models import ResearchContext
 
 
 def build_research_graph(
-    retrieve: RetrieveFn, llm: LLMProvider
+    retrieve: RetrieveWithVerdictFn, llm: LLMProvider
 ) -> CompiledStateGraph[ResearchContext, None, ResearchContext, ResearchContext]:
     """Assemble and compile the minimal retrieve-then-generate research graph.
 
     Args:
-        retrieve: A RetrieveFn implementation, injected into the retrieve node.
+        retrieve: A RetrieveWithVerdictFn implementation, injected into the
+            retrieve node.
         llm: An LLMProvider implementation, injected into the generate node.
 
     Returns:
