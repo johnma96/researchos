@@ -70,12 +70,13 @@ async def hybrid_rerank_search(
     llm: LLMProvider,
     documents: list[Document],
     k: int = 5,
-) -> list[Document]:
-    """Reorder a list of candidate documents by relevance using an LLM as judge.
+) -> tuple[list[Document], bool]:
+    """Reorder candidate documents by relevance and judge if any are useful.
 
     Renders the ``tasks/rerank`` prompt with the query and document texts,
-    asks the LLM to return a JSON-ordered list of document IDs, and maps
-    those IDs back to the original Document objects.
+    asks the LLM to return a JSON object with the ranked document IDs and a
+    verdict on whether the documents provide enough context to answer the
+    query, and maps the IDs back to the original Document objects.
 
     Intended to be called after ``hybrid_search`` — pass its output as
     ``documents`` and this function returns the top-k reranked subset.
@@ -87,12 +88,15 @@ async def hybrid_rerank_search(
         k: Number of documents to return after reranking.
 
     Returns:
-        List of up to ``k`` Documents in LLM-ranked order. Scores are not
-        updated — the ordering itself is the signal.
+        A tuple of (documents, any_relevant): up to ``k`` Documents in
+        LLM-ranked order (scores are not updated — the ordering itself is
+        the signal), and a bool indicating whether the LLM judged any of
+        them relevant enough to answer the query.
 
     Raises:
         json.JSONDecodeError: If the LLM response is not valid JSON.
-        KeyError: If the LLM returns a doc_id not present in ``documents``.
+        KeyError: If the LLM returns a doc_id not present in ``documents``,
+            or omits ``ranked_ids``/``any_relevant`` from the response.
     """
     docs_str = "\n".join(f'"{doc.doc_id}": {doc.text}' for doc in documents)
     prompt = PromptTemplate("tasks", "rerank").render(query=query, documents=docs_str)
@@ -100,9 +104,12 @@ async def hybrid_rerank_search(
     llm_answer = await llm.generate([message])
 
     # Extract the JSON array from the response — Claude may wrap it in markdown or add text.
-    start = llm_answer.find("[")
-    end = llm_answer.rfind("]") + 1
-    ranked_ids = json.loads(llm_answer[start:end])
+    start = llm_answer.find("{")
+    end = llm_answer.rfind("}") + 1
+    payload = json.loads(llm_answer[start:end])
+
+    ranked_ids = payload["ranked_ids"]
+    any_relevant = payload["any_relevant"]
 
     docs_by_id = {doc.doc_id: doc for doc in documents}
-    return [docs_by_id[doc_id] for doc_id in ranked_ids[:k] if doc_id in docs_by_id]
+    return [docs_by_id[doc_id] for doc_id in ranked_ids[:k] if doc_id in docs_by_id], any_relevant

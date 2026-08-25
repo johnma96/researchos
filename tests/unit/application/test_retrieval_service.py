@@ -47,11 +47,14 @@ async def test_hybrid_rerank_search_respects_llm_order():
     """Documents must be returned in the order the LLM specifies."""
     docs = _make_docs("doc1", "doc2", "doc3")
     llm_order = ["doc3", "doc1", "doc2"]
-    llm = MockLLMProvider(response=json.dumps(llm_order))
+    llm = MockLLMProvider(response=json.dumps({"ranked_ids": llm_order, "any_relevant": True}))
 
-    results = await hybrid_rerank_search(query="test query", llm=llm, documents=docs, k=3)
+    results, any_relevant = await hybrid_rerank_search(
+        query="test query", llm=llm, documents=docs, k=3
+    )
 
     assert [r.doc_id for r in results] == llm_order
+    assert any_relevant is True
 
 
 @pytest.mark.unit
@@ -60,9 +63,23 @@ async def test_hybrid_rerank_search_trims_to_k():
     """Only the first k documents from the LLM ranking are returned."""
     docs = _make_docs("doc1", "doc2", "doc3", "doc4", "doc5")
     llm_order = ["doc5", "doc3", "doc1", "doc4", "doc2"]
-    llm = MockLLMProvider(response=json.dumps(llm_order))
+    llm = MockLLMProvider(response=json.dumps({"ranked_ids": llm_order, "any_relevant": True}))
 
-    results = await hybrid_rerank_search(query="test query", llm=llm, documents=docs, k=3)
+    results, _ = await hybrid_rerank_search(query="test query", llm=llm, documents=docs, k=3)
 
     assert len(results) == 3
     assert results[0].doc_id == "doc5"
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_hybrid_rerank_search_returns_false_verdict_when_llm_judges_irrelevant():
+    """The any_relevant verdict from the LLM is propagated, not just the ranking."""
+    docs = _make_docs("doc1", "doc2")
+    llm = MockLLMProvider(
+        response=json.dumps({"ranked_ids": ["doc1", "doc2"], "any_relevant": False})
+    )
+
+    _, any_relevant = await hybrid_rerank_search(query="test query", llm=llm, documents=docs, k=2)
+
+    assert any_relevant is False
