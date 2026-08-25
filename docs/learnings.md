@@ -577,3 +577,50 @@ Regla simple para ResearchOS:
 - El criterio de aceptación de T18 decía que `git diff --stat` no debía tocar `telegram_bot.py`, y lo toca. Pero el diff es **solo** el import de `AnswerFn` desde `domain/interfaces` en vez de definirlo localmente — consecuencia del movimiento de alias de ayer, no adaptación al grafo. El criterio se cumple en lo que buscaba verificar: conectar el grafo no requirió modificar la lógica del adaptador.
 
 ---
+
+**Fecha:** 25/08/2026
+
+### ¿Qué aprendí?
+
+- **El score RRF no mide relevancia, mide consenso de posición — y por eso no sirve como umbral de calidad.** Propuse `score >= 0.5 * max(score)` como criterio de "recuperación pobre" y es estructuralmente incapaz de funcionar. Con `rrf_k=60` y 10 candidatos por retriever, un doc en rank 1 de ambos saca 1/61+1/61 ≈ 0.0328 y uno en rank 1 de uno solo saca 0.0164. **Esos números son idénticos sin importar si la query tiene algo que ver con el corpus**: RRF descartó los scores originales porque eran incomparables entre retrievers, y en el camino descartó toda información de relevancia absoluta. Peor: si no hay solapamiento, el máximo baja a 0.0164, el umbral a 0.0082, y como el mínimo posible es 0.0143 **pasan todos los candidatos**. Menos solapamiento produce un filtro más permisivo — está invertido.
+
+- **Los otros dos criterios que propuse tampoco discriminan.** "Mínimo 5 documentos que pasen el umbral" se cumple siempre cuando el umbral es casi siempre-pasa. "Al menos 3 papers distintos" es ambiguo en ambas direcciones: poca diversidad puede ser cobertura delgada (mala) o un paper que cubre el tema a fondo (buena); mucha diversidad puede ser buena cobertura o chunks aleatorios porque nada encaja.
+
+- **La señal absoluta que sí sirve ya la calculo y la tiro.** `ChromaVectorStore.search` devuelve `score` como similitud de coseno normalizada — una medida absoluta de proximidad semántica. `hybrid_search` la sobrescribe con el score RRF, así que cuando la función de ruteo ve los documentos, el coseno ya se perdió.
+
+- **La opción elegida no cuesta llamadas extra al LLM.** Ya pago un `llm.generate` en el reranker y solo le extraía el orden. Pedirle además un veredicto de suficiencia de contexto cuesta cero llamadas adicionales, y da un juicio semántico mejor que cualquier umbral numérico. Lección general: antes de agregar una llamada, revisar qué información ya estoy comprando y no extrayendo.
+
+- **En `str.format()` las llaves son sintaxis, así que un JSON de ejemplo dentro de un prompt hay que escaparlo.** `{"ranked_ids": ...}` se interpreta como campo de reemplazo y lanza `KeyError`; hay que escribir `{{...}}`. Límite conocido de la decisión de ADR-003 (prompts como `.txt` con `str.format()` en vez de Jinja2), y va a reaparecer en todas las tools de T20 que devuelvan estructuras. Riesgo adicional no resuelto: si el bloque `{documents}` trae texto de papers con llaves (código, notación matemática), el mismo problema aparece con contenido que no controlo.
+
+- **Parsear JSON por posición de caracteres es frágil.** Mi primera versión buscaba `[`/`]` para un campo y `:`/`}` para el otro, en el mismo string. Los dos bloques se pisaban: el primer `:` está dentro de `"ranked_ids":`, así que el segundo `json.loads` recibía texto inválido. Y todo dependía del orden de las claves, que el LLM no garantiza. Lo correcto: un solo `json.loads` del objeto completo, delimitado con `find("{")`/`rfind("}")`, y acceso por clave.
+
+- **La pregunta correcta para el veredicto no es "¿hay algo relevante?" sino "¿tengo suficiente contexto para responder bien?"** Con el primer criterio, un chunk marginalmente útil produce `true` casi siempre y la conditional edge nunca dispararía arXiv. El nombre del campo debe reflejar la decisión que se toma con él.
+
+### ¿Qué no entendí bien / queda abierto?
+
+- `payload["ranked_ids"]` y `payload["has_sufficient_context"]` con acceso directo lanzan `KeyError` si el modelo omite una clave, y eso tumba la consulta del usuario. Se junta con la deuda pendiente de no tener `add_error_handler` en el bot: el error sube por el grafo y el usuario se queda esperando sin respuesta. Emitir un booleano negativo es más difícil para un modelo que reordenar una lista, así que es un caso probable, no teórico.
+- Sigue sin decidir qué hace el agente con un paper de arXiv que no está indexado. La tool devuelve abstract y metadata, no texto completo chunkeado. Hay que decidirlo **antes** de escribir el nodo, porque determina qué se pone en el estado.
+
+### Decisiones de diseño
+
+- `hybrid_rerank_search` cambia su firma a `tuple[list[Document], bool]`. Se actualizaron los tres llamadores (`eval_retrieval.py`, `run_research_graph.py`, `run_telegram_bot.py`).
+- `RetrieveWithVerdictFn` queda como alias **local** en `nodes.py`, no en `domain/interfaces.py`. `RetrieveFn` sigue sirviendo al pipeline de V1 y a cualquier recuperación simple; la variante con veredicto tiene un solo consumidor hoy (`make_retrieve_node`). Se promueve a `domain/interfaces.py` si aparece un segundo — mismo criterio que se aplicó a `retrieve_hybrid_rerank` en `_wiring.py`.
+- El veredicto viaja en el **estado del grafo** (`has_relevant_context` en `ResearchContext`), no en la metadata de los documentos ni cambiando el contrato de `RetrieveFn`. Es parte de lo que el sistema sabe en ese momento, que es justo para lo que existe el estado.
+- Default `True` en `has_relevant_context`, documentado con comentario: solo existe para que los call sites puedan construir `ResearchContext(query=...)`; el nodo de recuperación siempre lo sobrescribe antes de que un router lo lea, porque las edges garantizan que corre primero.
+- `should_search_arxiv` escrita y testeada aunque el nodo destino no exista todavía. Es `state -> str` pura, testeable con estado fabricado sin ejecutar el nodo ni llamar al LLM — el criterio de aceptación de T19 sobre testear el ruteo aislado.
+- Se descartó el umbral relativo sobre RRF, el conteo mínimo de documentos y el criterio de diversidad de fuentes (ver arriba).
+
+### Errores interesantes
+
+- Umbral relativo sobre score RRF como criterio de calidad de recuperación (el error conceptual del día).
+- Parseo de JSON por posición con dos bloques que se pisaban.
+- JSON de ejemplo en el prompt sin escapar las llaves para `str.format()`.
+- El prompt decía "JSON array" tres veces cuando ya pedía un objeto, contradiciendo su propio ejemplo.
+- Comillas tipográficas (`"` `'`) mezcladas con rectas en el prompt.
+- Nombre `document_relevance` para un booleano — sugiere un valor de relevancia, no un sí/no.
+
+### Revisión del ensayo W34
+
+Corregido tras revisión: `operator.add` presentado como el default de reemplazo cuando es lo que se usa para *cambiarlo* a acumulación; un reducer opera sobre el valor del campo (una lista) y no sobre mensajes individuales, que es lo que hace que el tipo sea `Callable[[T, T], T]`; y el cierre decía "librería estándar" refiriéndose a LangGraph. También se reemplazó la justificación circular de por qué el grafo va en `infrastructure/` ("porque usa librerías externas" = enunciar la regla) por la real: `StateGraph` es la única pieza que exige el framework, así que aislarla confina la dependencia a un archivo.
+
+---

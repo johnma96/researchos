@@ -422,3 +422,66 @@
   `scripts/` a `src/researchos/` para que sea importable desde la imagen
 
 ---
+
+## 2026-08-25
+
+### Trabajo desarrollado
+- T19 (#7): resuelto el criterio de "recuperación pobre" con un veredicto de
+  suficiencia del propio LLM en el reranker, en vez de un umbral numérico.
+  Se descartaron tres alternativas (umbral relativo sobre score RRF, conteo
+  mínimo de documentos, diversidad de fuentes de origen) — ninguna
+  discrimina; el score RRF mide consenso de posición entre retrievers, no
+  relevancia absoluta, así que un umbral sobre él queda invertido (menos
+  solapamiento produce un filtro más permisivo). La opción elegida no
+  cuesta llamadas extra: se agrega al `llm.generate` que ya se pagaba para
+  reordenar
+- `retrieval_service.py`: `hybrid_rerank_search` cambia su firma a
+  `tuple[list[Document], bool]`; actualizados los tres llamadores
+  (`eval_retrieval.py`, `run_research_graph.py`, `run_telegram_bot.py`) —
+  `retrieve_hybrid_rerank` (V1) delega en el nuevo `retrieve_with_verdict`
+  descartando el bool, sin duplicar lógica
+- `domain/models.py`: `ResearchContext` gana `has_relevant_context: bool =
+  True` — el veredicto viaja en el estado del grafo, no en la metadata de
+  los documentos ni cambiando el contrato de `RetrieveFn`
+- `nodes.py`: nuevo alias local `RetrieveWithVerdictFn` (no en
+  `domain/interfaces.py` — un solo consumidor hoy, mismo criterio aplicado
+  a `_wiring.py` el jueves); `make_retrieve_node` setea
+  `has_relevant_context`; nueva función pura `should_search_arxiv(state) ->
+  str`, testeada, lista para cablear a una conditional edge cuando exista
+  el nodo de arXiv
+- Correcciones de tutor sobre el commit del veredicto: la clave del JSON
+  pasó de `any_relevant` a `has_sufficient_context` (coherencia con lo que
+  el campo realmente decide — suficiencia, no relevancia por documento);
+  `payload.get("has_sufficient_context", True)` reemplazó el acceso
+  directo — un veredicto malformado del LLM ya no tumba la consulta con
+  `KeyError`, degrada respondiendo igual (`ranked_ids` se deja con acceso
+  directo a propósito, sin ese campo no hay reranking que devolver)
+- `docs/learnings.md`: entrada de hoy documenta la matemática de por qué
+  el umbral sobre RRF estaba invertido, el escapado de llaves de
+  `str.format()` en prompts con JSON de ejemplo (límite de ADR-003), y el
+  bug de parseo posicional (`find`/`rfind` de dos campos en el mismo
+  string) previo a la versión con un solo `json.loads`
+- Ensayo W34: 2 correcciones tras revisión del tutor humano — `operator.add`
+  presentado como el default cuando es la opción de acumular (no al
+  revés), y la justificación de por qué el grafo va en `infrastructure/`
+  cambiada de circular ("usa librerías externas") a la real (`StateGraph`
+  es la única pieza que exige el framework)
+
+### Próximos pasos
+- Decidir qué hace el agente con un paper de arXiv no indexado (abstract
+  solamente vs. disparar ingesta completa) — bloquea el nodo de arXiv
+- Escribir el nodo de arXiv y cablear la conditional edge con
+  `should_search_arxiv` — cierre de T19
+- `add_error_handler` en `telegram_bot.py`: sigue pendiente. El `KeyError`
+  de `has_sufficient_context` ya no puede dispararlo (default defensivo
+  agregado hoy), pero `ranked_ids` sigue sin protección y no hay handler
+  general en el bot
+- Riesgo abierto de `str.format()`: texto de documentos con llaves (código,
+  notación matemática) rompería el render del prompt — condición de
+  revisión de ADR-003, va a reaparecer en las tools de T20
+- Deuda de mypy: 34 errores, la mayoría de `chromadb`; silenciar con
+  overrides en `pyproject.toml` y arreglar los de código propio
+- BM25 se reconstruye en memoria desde Chroma en cada arranque; revisar
+  cuando el corpus crezca con T21
+
+---
